@@ -285,7 +285,7 @@ function daily_contacts_res(res::Array{Humans,1})
     end
 end
 
-function daily_contacts_hcw(hcw::Array{Humans,1})
+function daily_contacts_hcw(hcw::Array{Humans,1},n_shift::Int64)
     
     #dhr = [0.425000000, 0.241666667, 0.141666667, 0.050000000, 0.050000000, 0.050000000, 0.016666667, 0.016666667, 0.000000000, 0.008333333]
     #dhh = [0.50515464, 0.23711340, 0.00000000, 0.13402062, 0.00000000, 0.08247423, 0.00000000, 0.02061856, 0.00000000, 0.02061856]
@@ -293,8 +293,22 @@ function daily_contacts_hcw(hcw::Array{Humans,1})
     #dist_hr = Distributions.Categorical(dhr)
     #dist_hh = Distributions.Categorical(dhh)
 
-    n_contacts_psw = [9;9;22]
+    aux_psw = findall(y-> y.staff_type == :psw && y.shift == n_shift && (!y.iso || (y.iso && y.sub)),hcw)
+
+    aux_nurse = findall(y-> y.staff_type == :nurse && y.shift == n_shift && (!y.iso || (y.iso && y.sub)),hcw)
+
+    aux_diet = findall(y-> y.staff_type == :diet && y.shift == n_shift && (!y.iso || (y.iso && y.sub)),hcw)
+
+    aux_hk = findall(y-> y.staff_type == :hk && y.shift == n_shift && (!y.iso || (y.iso && y.sub)),hcw)
+
+    aux_res = findall(y-> !(y.health in (DEAD,HOSP)),residents)
+
+    #= n_contacts_psw = [9;9;22]
     n_contacts_nurse = [32;32;64]
+ =#
+    N_psw = Int(ceil(length(aux_res)/length(aux_psw)))
+    N_nurse = Int(ceil(length(aux_res)/length(aux_nurse)))
+   
     for x in hcw
         
         for i = 1:length(x.contacts_res)
@@ -303,57 +317,126 @@ function daily_contacts_hcw(hcw::Array{Humans,1})
             x.contacts_nurse[i] = 0
             x.contacts_hk[i] = 0
         end
+    end
+    
+    
+    for idx in aux_psw
+        x = hcw[idx]
+        aux = x.shift
+        hmin = (aux-1)*8+1
+        hmax = aux*8
+        n_c::Int64 = N_psw
 
-        if !x.iso
-            ###now for HCW we need to split the contacts
-            aux = x.shift
-            hmin = (aux-1)*8+1
-            hmax = aux*8
-            n_c::Int64 = 0
+        for i = 1:n_c
+            r = rand(hmin:hmax)
+            x.contacts_res[r] += 1 
+        end
+        n = rand(2:4)
 
-            if x.staff_type == :nurse
-                n_c = n_contacts_nurse[x.shift]
-            elseif x.staff_type == :psw
-                n_c = n_contacts_psw[x.shift]
-            end
-
-            for i = 1:n_c
+        for j = 1:n
+            r = rand(1:4)
+            if r == 1
                 r = rand(hmin:hmax)
-                x.contacts_res[r] += 1 
-            end
+                x.contacts_psw[r] += 1 
+                
+            elseif r == 2
+                r = rand(hmin:hmax)
+                x.contacts_nurse[r] += 1 
 
-            ### let's flip the copin and see the kind of hcw the hcw will meet
-
-            if x.staff_type == :nurse || x.staff_type == :psw
-                n = rand(2:4)
+            elseif r == 3
+                r = rand(hmin:hmax)
+                x.contacts_hk[r] += 1 
             else
-                n = 2
-            end
-
-            aux = x.shift
-            hmin = (aux-1)*8+1
-            hmax = aux*8
-
-            for j = 1:n
-                r = rand(1:4)
-                if r == 1
-                    r = rand(hmin:hmax)
-                    x.contacts_psw[r] += 1 
-                    
-                elseif r == 2
-                    r = rand(hmin:hmax)
-                    x.contacts_nurse[r] += 1 
-
-                elseif r == 3
-                    r = rand(hmin:hmax)
-                    x.contacts_hk[r] += 1 
-                else
-                    r = rand(hmin:hmax)
-                    x.contacts_diet[r] += 1 
-                end
+                r = rand(hmin:hmax)
+                x.contacts_diet[r] += 1 
             end
         end
     end
+    for idx in aux_nurse
+        x = hcw[idx]
+        aux = x.shift
+        hmin = (aux-1)*8+1
+        hmax = aux*8
+        n_c::Int64 = N_psw
+
+        for i = 1:n_c
+            r = rand(hmin:hmax)
+            x.contacts_res[r] += 1 
+        end
+        n = rand(2:4)
+
+        for j = 1:n
+            r = rand(1:4)
+            if r == 1
+                r = rand(hmin:hmax)
+                x.contacts_psw[r] += 1 
+                
+            elseif r == 2
+                r = rand(hmin:hmax)
+                x.contacts_nurse[r] += 1 
+
+            elseif r == 3
+                r = rand(hmin:hmax)
+                x.contacts_hk[r] += 1 
+            else
+                r = rand(hmin:hmax)
+                x.contacts_diet[r] += 1 
+            end
+        end
+    end
+    for idx in aux_diet
+        x = hcw[idx]
+        aux = x.shift
+        hmin = (aux-1)*8+1
+        hmax = aux*8
+        
+        n = 2
+        for j = 1:n
+            r = rand(1:4)
+            if r == 1
+                r = rand(hmin:hmax)
+                x.contacts_psw[r] += 1 
+                
+            elseif r == 2
+                r = rand(hmin:hmax)
+                x.contacts_nurse[r] += 1 
+
+            elseif r == 3
+                r = rand(hmin:hmax)
+                x.contacts_hk[r] += 1 
+            else
+                r = rand(hmin:hmax)
+                x.contacts_diet[r] += 1 
+            end
+        end
+    end
+    for idx in aux_hk
+        x = hcw[idx]
+        aux = x.shift
+        hmin = (aux-1)*8+1
+        hmax = aux*8
+        
+        n = 2
+        for j = 1:n
+            r = rand(1:4)
+            if r == 1
+                r = rand(hmin:hmax)
+                x.contacts_psw[r] += 1 
+                
+            elseif r == 2
+                r = rand(hmin:hmax)
+                x.contacts_nurse[r] += 1 
+
+            elseif r == 3
+                r = rand(hmin:hmax)
+                x.contacts_hk[r] += 1 
+            else
+                r = rand(hmin:hmax)
+                x.contacts_diet[r] += 1 
+            end
+        end
+    end
+          
 end
 
 function contact_dynamics(res::Array{Humans,1},rooms::Array{Rooms,1},hcw::Array{Humans,1},P::ModelParameters,c_shift::Int64,t_in_day::Int64)

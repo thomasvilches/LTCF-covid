@@ -37,6 +37,7 @@ Base.@kwdef mutable struct Humans
     iso_when::HEALTH = UNDEF
     tested_when::HEALTH = UNDEF
     iso_symp::Bool = false
+    sub::Bool = false
 end
 
 Base.@kwdef mutable struct Rooms
