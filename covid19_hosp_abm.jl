@@ -36,6 +36,11 @@ using Parameters, Distributions, StatsBase, StaticArrays, Random, Match, DataFra
     staff_mask::Float64 = 0.85
     nurse_mask::Float64 = 0.85
 
+    test_sens::Float64 = 1.0
+    start_test::Int64 = 7
+    test_interval::Int64 = 14
+    testing::Bool = false
+
 end
 
 Base.@kwdef mutable struct ct_data_collect
@@ -135,15 +140,27 @@ function main(P::ModelParameters,sim_idx::Int64)
 
     t::Int64 = 1
     #t = 1
-  
+    
+    t_testing::Int64 = 0
+    #t_testing = 0
     #initiates the dynamics
     for t_d = 1:P.modeltime ##run days
-        #t_in_day::Int64 = 1
-        t_in_day = 1
+        t_in_day::Int64 = 1
+        #t_in_day = 1
             ##3number of contacts per day residents
         daily_contacts_res(residents)
         daily_contacts_hcw(hcw)
-            
+        
+        if P.testing
+            if t_d >= P.start_test
+                if t_testing%P.test_interval == 0
+                    testing_individuals(hcw)
+                end
+                update_tested(hcw)
+                t_testing += 1
+            end
+        end
+
         for n_shift = 1:P.n_shifts_pd #run the 3 shifts
             for h = 1:(P.n_hours_ps-1)#run the (n-1)th hours in a shift
                # println(t)
@@ -164,6 +181,7 @@ function main(P::ModelParameters,sim_idx::Int64)
             t_in_day+=1
             t += 1
         end #end n_shift
+
     end #end t_d
 
     return (lat_res_ct,lat_hcw_ct,pre_res_ct,pre_hcw_ct,asymp_res_ct,asymp_hcw_ct,mild_res_ct,mild_hcw_ct,sev_res_ct,sev_hcw_ct,hosp_res_ct,hosp_hcw_ct,rec_res_ct,rec_hcw_ct,dead_res_ct,dead_hcw_ct)

@@ -359,7 +359,7 @@ end
 function contact_dynamics(res::Array{Humans,1},rooms::Array{Rooms,1},hcw::Array{Humans,1},P::ModelParameters,c_shift::Int64,t_in_day::Int64)
     #contact matrices
     pos_res = findall(x -> !x.iso && x.health!=DEAD ,res)
-    pos_iso = findall(x -> x.iso == true && (x.health != DEAD || x.health != HOSP), res)
+    pos_iso = findall(x -> x.iso == true && (x.health != DEAD && x.health != HOSP), res)
 
     pos_psw = findall(x -> x.shift == c_shift && x.staff_type == :psw && x.iso == false && x.health != DEAD, hcw)
     pos_nurse = findall(x -> x.shift == c_shift && x.staff_type == :nurse && x.iso == false && x.health != DEAD, hcw)
@@ -450,13 +450,17 @@ function contact(x,res,hcw,pos_res::Array{Int64,1},pos_iso::Array{Int64,1},pos_p
 
         reduction_idx = x.health == ASYMP ? P.asymp_red_idx : 1.0
         
-        performing_contacts_p2p(x,res,pos_res,x.contacts_res[t],P,reduction_idx,res_class,t) ##normal residents are in position 1
+        if x.room_idx < 0
+            performing_contacts_p2p(x,res,[pos_res;pos_iso],x.contacts_res[t],P,reduction_idx,res_class,t) ##normal residents are in position 1
+        else
+            performing_contacts_p2p(x,res,pos_res,x.contacts_res[t],P,reduction_idx,res_class,t) ##normal residents are in position 1
+        end
         #performing_contacts_p2p(x,res,pos_iso,x.contacts_res[t],P,reduction_idx,res_class,t) ##communal areas are in position 2
         performing_contacts_p2p(x,hcw,pos_psw,x.contacts_psw[t],P,reduction_idx,!res_class,t) ##isolation rooms are in pos 3 of n contacts
         performing_contacts_p2p(x,hcw,pos_nurse,x.contacts_nurse[t],P,reduction_idx,!res_class,t) ##isolation rooms are in pos 3 of n contacts
         performing_contacts_p2p(x,hcw,pos_diet,x.contacts_diet[t],P,reduction_idx,!res_class,t) ##isolation rooms are in pos 3 of n contacts
         performing_contacts_p2p(x,hcw,pos_hk,x.contacts_hk[t],P,reduction_idx,!res_class,t) ##isolation rooms are in pos 3 of n contacts
-       
+        
     end
 end
 
@@ -591,4 +595,164 @@ function forcing_contact_res(res::Array{Humans,1},P::ModelParameters)
         end
     end
 
+end
+
+function testing_individuals(h::Array{Humans,1})
+
+    for i = 1:length(h)
+        x = h[i]
+        
+        ### I have the numbers for latent period t1, presymp, asymp, and symp
+        if !x.iso_symp
+            if x.health == LAT
+                if x.swap == ASYMP
+                    d = Int(floor(x.tis-x.dur[1]))
+                    infec = infectivity(d)
+                    if infec[1]<infec[2]
+                        rnd = Distributions.Uniform(infec[1],infec[2])
+                        r = rand(rnd)/2.0
+                    else
+                        r = 0
+                    end
+                    if rand() < r*P.test_sens
+                        x.tested_when = x.health
+                        x.tested = true
+                        dist = [0.6;0.2;0.2]
+                        a = findfirst(y-> rand() <= y,cumsum(dist))
+                        x.h_t_delay =Int(a)
+                    end
+                else
+                    d = Int(floor(x.tis-x.dur[1]-x.dur[3]))
+                    infec = infectivity(d)
+                    if infec[1]<infec[2]
+                        rnd = Distributions.Uniform(infec[1],infec[2])
+                        r = rand(rnd)
+                    else
+                        r = 0
+                    end
+                    
+                    if rand() < r*P.test_sens
+                        x.tested_when = x.health
+                        x.tested = true
+                        dist = [0.6;0.2;0.2]
+                        a = findfirst(y-> rand() <= y,cumsum(dist))
+                        x.h_t_delay =Int(a)
+                        x.infp = x.dur[3]+x.dur[4]+x.dur[1]-x.tis
+                    end
+
+                end
+            elseif  x.health == ASYMP
+                d = Int(floor(x.tis))
+                infec = infectivity(d)
+                if infec[1]<infec[2]
+                    rnd = Distributions.Uniform(infec[1],infec[2])
+                    r = rand(rnd)/2.0
+                else
+                    r = 0
+                end
+                if rand() < r*P.test_sens
+                    x.tested_when = x.health
+                    x.tested = true
+                    dist = [0.6;0.2;0.2]
+                    a = findfirst(y-> rand() <= y,cumsum(dist))
+                    x.h_t_delay = Int(a)
+                end
+            elseif x.health == PRE
+                d = Int(floor(x.tis-x.dur[3]))
+                infec = infectivity(d)
+                if infec[1]<infec[2]
+                    rnd = Distributions.Uniform(infec[1],infec[2])
+                    r = rand(rnd)
+                else
+                    r = 0
+                end
+                
+                if rand() < r*P.test_sens
+                    x.tested_when = x.health
+                    x.tested = true
+                    dist = [0.6;0.2;0.2]
+                    a = findfirst(y-> rand() <= y,cumsum(dist))
+                    x.h_t_delay = Int(a)
+                    x.infp = x.dur[3]+x.dur[4]-x.tis
+                end
+            end
+        end
+    end
+end
+
+function update_tested(h::Array{Humans,1})
+    for x in h
+        if x.tested && !x.iso_symp
+            x.h_test += 1
+            if x.h_test >= x.h_t_delay
+                x.tested = false
+                #x.h_test = -1
+                #println("isolado por teste $(x.idx)")
+                iso_ind(x)
+                
+            end
+        end
+    end
+end
+
+
+function infectivity(d::Int64)
+    V = [-10;
+    -9;
+    -8;
+    -7;
+    -6;
+    -5;
+    -4;
+    -3;
+    -2;
+    -1;
+    0;
+    1;
+    2;
+    3;
+    4;
+    5;
+    6;
+    7;
+    8;
+    9;
+    10;
+    11;
+    12;
+    13;
+    14
+    ]
+    M =[0	0;
+    0	0;
+    0	0;
+    0	0.02;
+    0	0.03;
+    0	0.09;
+    0	0.22;
+    0.05	0.43;
+    0.13	0.67;
+    0.58	1;
+    0.92	1;
+    0.69	0.95;
+    0.46	0.8;
+    0.29	0.62;
+    0.18	0.49;
+    0.11	0.37;
+    0.06	0.24;
+    0.03	0.12;
+    0.02	0.09;
+    0.01	0.05;
+    0	0.03;
+    0	0;
+    0	0;
+    0	0;
+    0	0]
+
+    if d >= minimum(V) && d <= maximum(V)
+        a = findfirst(y->y==d,V)
+    else
+        a = 1
+    end
+ return M[a,:]
 end

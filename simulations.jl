@@ -13,8 +13,9 @@ function name_files(ip::ModelParameters)
 end
 
 
-function create_folder()
-    RF = string("results_$(ip.type_h)_$(ip.iso_strat)") ## 
+function create_folder(ip::ModelParameters)
+    test = ip.testing ? "test_$(ip.test_interval)" : "not_testing"
+    RF = string("results_$(ip.type_h)_$(ip.iso_strat)_$(test)") ## 
     if !Base.Filesystem.isdir(RF)
         Base.Filesystem.mkpath(RF)
     end
@@ -108,7 +109,8 @@ end
 
 function runsim(simnum, ip::ModelParameters)
     
-    folder = create_folder()
+    folder = create_folder(ip)
+    
     dname = "$folder/beta_$(replace(string(ip.β), "." => "_"))"
 
     #rooms = creating_hosp_structure(hospital_data)
@@ -120,7 +122,24 @@ function runsim(simnum, ip::ModelParameters)
 end
 
 
+@everywhere ip = ModelParameters(β = 0.191, type_h = :old, iso_strat = :total,testing = false,test_interval = 14) #new0.25 old 0.197
+runsim(2000,ip)
+
+
+
 #hospital_data = CSV.read("data/rooms_hosp.csv")
 
-@everywhere ip = ModelParameters(β = 0.25, type_h = :new, iso_strat = :total) #new0.25 old 0.197
-runsim(1000,ip)
+@everywhere ip = ModelParameters(β = 0.239, type_h = :new, iso_strat = :total,testing = true,test_interval = 14) #new0.25 old 0.197
+runsim(2000,ip)
+
+
+@everywhere ip = ModelParameters(β = 0.239, type_h = :new, iso_strat = :total,testing = true,test_interval = 7) #new0.25 old 0.197
+runsim(2000,ip)
+
+
+@everywhere ip = ModelParameters(β = 0.195, type_h = :old, iso_strat = :total,testing = true,test_interval = 14) #new0.25 old 0.197
+runsim(2000,ip)
+
+
+@everywhere ip = ModelParameters(β = 0.195, type_h = :old, iso_strat = :total,testing = true,test_interval = 7) #new0.25 old 0.197
+runsim(2000,ip)

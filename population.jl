@@ -31,6 +31,12 @@ Base.@kwdef mutable struct Humans
     comorbidity::Int16 = 0
     staff_type::Symbol = :none ##:psw :diet :hk :nurse
     mask_ef::Float64 = 0.0
+    tested::Bool = false
+    h_test::Int64 = -1
+    h_t_delay::Int64 = -1
+    iso_when::HEALTH = UNDEF
+    tested_when::HEALTH = UNDEF
+    iso_symp::Bool = false
 end
 
 Base.@kwdef mutable struct Rooms

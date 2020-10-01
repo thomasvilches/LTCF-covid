@@ -18,10 +18,10 @@ function time_update(group,rooms,P)
                         x.iso = false
                     end
                 end
-                #= if x.health != DEAD && x.room_idx > 0 ##if they are not dead and are an individual
+                #= if x.health == REC && x.room_idx > 0 ##if they are not dead and are an individual
                     rooms[x.room_idx].n_symp_res -= 1 ###This person is not consider symp anymore
-                    x.room_idx = x.reg_r_idx ##get back to their room
-                end=#
+                    #x.room_idx = x.reg_r_idx ##get back to their room
+                end =#
             end
         end
 
@@ -43,45 +43,17 @@ function time_update(group,rooms,P)
             #################################################################
             ##########Implement here the ones who got back from severe#######
             #################################################################
-            if x.health == REC && x.wentTo == SEV
+            #= if x.health == REC && x.wentTo == SEV
                 x.iso = false
             elseif x.health == DEAD && x.room_idx > 0
                 rooms[x.room_idx].n_av_beds -= 1 ###The bed is available
-            end
+            end =#
         end
     end
     return lat, pre, asymp, mild, hosp, sev, rec, dead
 end
 export time_update
 
-function set_new_room(x::Humans,rooms::Array{Rooms,1})
-
-    if rooms[x.room_idx].n_beds == 1
-        rooms[x.room_idx].n_symp_res += 1
-    else
-        iso_r = findall(y -> y.typeofroom == "isolation" && y.n_av_beds > 0, rooms)
-        if length(iso_r) > 0
-            r = rand(iso_r)
-            x.room_idx = r
-            rooms[r].n_av_beds -= 1
-            rooms[r].n_symp_res +=1
-        else
-            ##check for bedrooms of single bed that are available
-            iso_r = findall(y -> y.typeofroom == "bedroom" && (y.n_beds*y.n_av_beds) == 1, rooms)
-            if length(iso_r) > 0 
-                r = rand(iso_r)
-                x.room_idx = r
-                rooms[r].n_av_beds -= 1
-                rooms[r].n_symp_res +=1
-            else
-                ###if there is no single bed available, the person is kept in the room
-                r = x.room_idx
-                rooms[r].n_symp_res +=1
-            end
-        end
-    end
-
-end
 
 function move_to_latent(x::Humans)
     ## transfers human h to the incubation period and samples the duration
@@ -149,24 +121,23 @@ function move_to_mild(x::Humans,rooms::Array{Rooms,1})
     x.health = MILD     
     x.tis = 0 
     x.exp = x.dur[4]
-    x.infp = x.dur[4]
+    
     x.swap = REC
     x.wentTo = MILD
-    iso_ind(x)
 
-    #= if x.room_idx > 0 
-        set_new_room(x,rooms)
-    end =#
+    if !x.iso
+        x.infp = x.dur[4]
+        iso_ind(x)
+        x.iso_symp = true
+    end
+
     # x.iso property remains from either the latent or presymptomatic class
     # if x.iso is true, staying in MILD is same as MISO since contacts will be limited. 
     # we still need the separation of MILD, MISO because if x.iso is false, then here we have to determine 
     # how many days as full contacts before self-isolation
     # NOTE: if need to count non-isolated mild people, this is overestimate as isolated people should really be in MISO all the time
     #   and not go through the mild compartment 
-   # if x.iso || rand() < p.fmild
-   #     x.swap = MISO  
-   #     x.exp = p.τmild
-   # end
+  
 end
 export move_to_mild
 
@@ -175,8 +146,8 @@ function move_to_sev(x::Humans,rooms::Array{Rooms,1})
     x.health = SEV    
     x.tis = 0 
     x.exp = rand() ###we consider that it can take one day to move this person
-    x.infp = x.dur[4]
-    
+   
+
     x.wentTo = SEV        
 
     if x.room_idx > 0
@@ -224,7 +195,13 @@ function move_to_sev(x::Humans,rooms::Array{Rooms,1})
 
     end 
 
-    iso_ind(x)
+
+    if !x.iso
+        x.infp = x.dur[4]
+        iso_ind(x)
+        x.iso_symp = true
+    end
+
     # x.iso property remains from either the latent or presymptomatic class
     # if x.iso is true, staying in MILD is same as MISO since contacts will be limited. 
     # we still need the separation of MILD, MISO because if x.iso is false, then here we have to determine 
@@ -244,11 +221,11 @@ function move_to_hosp(x::Humans,rooms::Array{Rooms,1})
     x.health = HOSP    
     x.tis = 0 
     x.exp = x.dur[4]-x.exp
+    
     x.swap = REC
-    x.iso = true
-    x.timeiso = 0
 
 
+    x.wentTo = HOSP   
     #h = x.comorbidity == 1 ? 0.4 : 0.09
     c = x.comorbidity == 1 ? 0.33 : 0.25
 
@@ -282,6 +259,7 @@ function move_to_hosp(x::Humans,rooms::Array{Rooms,1})
             end
         end
     end
+    x.infp = x.exp
   #=
     if rand() < mh[x.ag]
         x.tis = x.exp  
@@ -294,12 +272,18 @@ end
 export move_to_hosp
 
 
-function move_to_dead(h::Humans)
+function move_to_dead(x::Humans)
     # no level of alchemy will bring someone back to life. 
-    h.health = DEAD
-    h.swap = UNDEF
-    h.tis = 0 
-    h.exp = 999 ## stay recovered indefinitely
+    x.health = DEAD
+    x.swap = UNDEF
+    x.tis = 0 
+    x.exp = 999 ## stay recovered indefinitely
+    x.iso_symp = false
+
+    if (x.wentTo == SEV || x.h_t_delay > 0)  && x.room_idx > 0 #&& rooms[x.room_idx].n_symp_res > 0
+        rooms[x.room_idx].n_symp_res -= 1
+        #x.iso = false
+    end
    # h.iso = true # a dead person is isolated
     #_set_isolation(h, true)  # do not set the isovia property here.  
     # isolation property has no effect in contact dynamics anyways (unless x == SUS)
@@ -309,10 +293,12 @@ function move_to_recovered(x::Humans)
     x.health = REC
     x.swap = UNDEF
     x.tis = 0
-    x.infp = 0 
+    #x.infp = 0 
     x.exp = 999 ## stay recovered indefinitely
+    x.iso_symp = false
 
-    if x.wentTo == MILD && x.room_idx > 0 #&& rooms[x.room_idx].n_symp_res > 0
+    if (x.wentTo == SEV || x.h_t_delay > 0)   && x.room_idx > 0 #&& rooms[x.room_idx].n_symp_res > 0
+        
         rooms[x.room_idx].n_symp_res -= 1
     end
 
@@ -323,21 +309,31 @@ end
 
 function iso_ind(x::Humans)
     
+   # println("$(x.idx) $(x.staff_type) $(x.h_t_delay) $(x.h_test)  $(x.health)")
     if P.iso_strat == :only
         x.iso = true
         x.timeiso = 0
+        x.tested = false
+        if x.room_idx > 0
+            rooms[x.room_idx].n_symp_res += 1
+        end
+        x.iso_when = x.health
     elseif P.iso_strat == :total
         x.iso = true
         x.timeiso = 0
-        pos = findall(y->y.room_idx == x.room_idx,residents)
-        for kk = pos
-            residents[kk].iso = true
-            residents[kk].timeiso = 0
+        x.tested = false
+        if x.room_idx > 0
+            rooms[x.room_idx].n_symp_res += 1
+            
+            pos = findall(y->y.room_idx == x.room_idx,residents)
+            for kk = pos
+                residents[kk].iso = true
+                residents[kk].timeiso = 0
+            end
         end
+        x.iso_when = x.health
     end
-    if x.room_idx > 0
-        rooms[x.room_idx].n_symp_res += 1
-    end
+    
 end
 function cleaning_rooms(rooms::Array{Rooms,1},pos)
     
