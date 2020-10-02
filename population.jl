@@ -38,6 +38,10 @@ Base.@kwdef mutable struct Humans
     tested_when::HEALTH = UNDEF
     iso_symp::Bool = false
     sub::Bool = false
+
+    res_care::Array{Int64,1} = repeat([0],200)
+    n_contacts::Int64 = 0
+    contacts_done::Int64 = 0
 end
 
 Base.@kwdef mutable struct Rooms

@@ -256,7 +256,7 @@ function daily_contacts_res(res::Array{Humans,1})
             x.contacts_res[r] += 1
         end
 
-        ###now for HCW we need to split the contacts
+        #= ###now for HCW we need to split the contacts
         hmin = 1
         hmax = 8
         r = rand(hmin:hmax)
@@ -281,18 +281,13 @@ function daily_contacts_res(res::Array{Humans,1})
                 x.contacts_res[i] = 0#x.contacts_other_class[i]+x.contacts_same_class[i]
                 #x.contacts_same_class[i] = 0
             end
-        end
+        end =#
     end
 end
 
-function daily_contacts_hcw(hcw::Array{Humans,1},n_shift::Int64)
+function daily_contacts_hcw(n_shift::Int64)
     
-    #dhr = [0.425000000, 0.241666667, 0.141666667, 0.050000000, 0.050000000, 0.050000000, 0.016666667, 0.016666667, 0.000000000, 0.008333333]
-    #dhh = [0.50515464, 0.23711340, 0.00000000, 0.13402062, 0.00000000, 0.08247423, 0.00000000, 0.02061856, 0.00000000, 0.02061856]
-
-    #dist_hr = Distributions.Categorical(dhr)
-    #dist_hh = Distributions.Categorical(dhh)
-
+  
     aux_psw = findall(y-> y.staff_type == :psw && y.shift == n_shift && (!y.iso || (y.iso && y.sub)),hcw)
 
     aux_nurse = findall(y-> y.staff_type == :nurse && y.shift == n_shift && (!y.iso || (y.iso && y.sub)),hcw)
@@ -303,20 +298,44 @@ function daily_contacts_hcw(hcw::Array{Humans,1},n_shift::Int64)
 
     aux_res = findall(y-> !(y.health in (DEAD,HOSP)),residents)
 
-    #= n_contacts_psw = [9;9;22]
-    n_contacts_nurse = [32;32;64]
- =#
-    N_psw = Int(ceil(length(aux_res)/length(aux_psw)))
-    N_nurse = Int(ceil(length(aux_res)/length(aux_nurse)))
-   
+
+
     for x in hcw
-        
+        x.contacts_done = 0
+        x.n_contacts = 0
         for i = 1:length(x.contacts_res)
             x.contacts_res[i] = 0
             x.contacts_psw[i] = 0
             x.contacts_nurse[i] = 0
             x.contacts_hk[i] = 0
         end
+    end
+
+    for j in aux_res
+        y = residents[j]
+
+        r = rand(aux_psw)
+        x = hcw[r]
+        aux = x.shift
+        hmin = (aux-1)*8+1
+        hmax = aux*8
+        
+        r = rand(hmin:hmax)
+        x.contacts_res[r] += 1
+        x.n_contacts += 1
+        x.res_care[x.n_contacts] = y.idx
+
+
+        r = rand(aux_nurse)
+        x = hcw[r]
+        aux = x.shift
+        hmin = (aux-1)*8+1
+        hmax = aux*8
+        
+        r = rand(hmin:hmax)
+        x.contacts_res[r] += 1
+        x.n_contacts += 1
+        x.res_care[x.n_contacts] = y.idx
     end
     
     
@@ -325,14 +344,8 @@ function daily_contacts_hcw(hcw::Array{Humans,1},n_shift::Int64)
         aux = x.shift
         hmin = (aux-1)*8+1
         hmax = aux*8
-        n_c::Int64 = N_psw
-
-        for i = 1:n_c
-            r = rand(hmin:hmax)
-            x.contacts_res[r] += 1 
-        end
+       
         n = rand(2:4)
-
         for j = 1:n
             r = rand(1:4)
             if r == 1
@@ -357,12 +370,7 @@ function daily_contacts_hcw(hcw::Array{Humans,1},n_shift::Int64)
         aux = x.shift
         hmin = (aux-1)*8+1
         hmax = aux*8
-        n_c::Int64 = N_psw
-
-        for i = 1:n_c
-            r = rand(hmin:hmax)
-            x.contacts_res[r] += 1 
-        end
+        
         n = rand(2:4)
 
         for j = 1:n
@@ -439,178 +447,166 @@ function daily_contacts_hcw(hcw::Array{Humans,1},n_shift::Int64)
           
 end
 
-function contact_dynamics(res::Array{Humans,1},rooms::Array{Rooms,1},hcw::Array{Humans,1},P::ModelParameters,c_shift::Int64,t_in_day::Int64)
+function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelParameters,c_shift::Int64,t::Int64)
     #contact matrices
-    pos_res = findall(x -> !x.iso && x.health!=DEAD ,res)
-    pos_iso = findall(x -> x.iso == true && (x.health != DEAD && x.health != HOSP), res)
+    pos_res = findall(x -> !x.iso && x.health!=DEAD && x.health != HOSP,res)
+    pos_iso = findall(x -> x.iso == true && x.health != DEAD && x.health != HOSP, res)
 
-    pos_psw = findall(x -> x.shift == c_shift && x.staff_type == :psw && x.iso == false && x.health != DEAD, hcw)
-    pos_nurse = findall(x -> x.shift == c_shift && x.staff_type == :nurse && x.iso == false && x.health != DEAD, hcw)
-    pos_diet = findall(x -> x.shift == c_shift && x.staff_type == :diet && x.iso == false && x.health != DEAD, hcw)
-    pos_hk = findall(x -> x.shift == c_shift && x.staff_type == :hk && x.iso == false && x.health != DEAD, hcw)
+    pos_psw = findall(x -> x.shift == c_shift && x.staff_type == :psw && x.iso == false && x.health != DEAD && x.health != HOSP, hcw)
+    pos_nurse = findall(x -> x.shift == c_shift && x.staff_type == :nurse && x.iso == false && x.health != DEAD && x.health != HOSP, hcw)
+    pos_diet = findall(x -> x.shift == c_shift && x.staff_type == :diet && x.iso == false && x.health != DEAD && x.health != HOSP, hcw)
+    pos_hk = findall(x -> x.shift == c_shift && x.staff_type == :hk && x.iso == false && x.health != DEAD && x.health != HOSP, hcw)
     
     
     totalinf_res::Int64 = 0
     totalinf_hcw::Int64 = 0
     totalinf_iso::Int64 = 0
     
-    pos_res_inf = findall(x -> !x.iso && x.health in (ASYMP,SEV,PRE,MILD) ,res)
-    pos_iso_inf = findall(x -> x.iso == true && x.health in (ASYMP,SEV,PRE,MILD), res)
-    
-    pos_psw_inf = findall(x -> x.shift == c_shift && x.staff_type == :psw && x.iso == false && x.health in (ASYMP,SEV,PRE,MILD), hcw)
-    pos_nurse_inf = findall(x -> x.shift == c_shift && x.staff_type == :nurse && x.iso == false && x.health in (ASYMP,SEV,PRE,MILD), hcw)
-    pos_diet_inf = findall(x -> x.shift == c_shift && x.staff_type == :diet && x.iso == false && x.health in (ASYMP,SEV,PRE,MILD), hcw)
-    pos_hk_inf = findall(x -> x.shift == c_shift && x.staff_type == :hk && x.iso == false && x.health in (ASYMP,SEV,PRE,MILD), hcw)
+    ih::HEALTH = UNDEF
+    for i in pos_res
+        x = residents[i]
+        ih = x.health
+        if x.health == ASYMP
+           
+            for j = 1:x.contacts_res[t]
+                r = rand(pos_res)
+                y = residents[r]
+                if y.health == SUS
+                    perform_contact(y,ih,P.asymp_red_idx,0.0,0.0)
+                end
+            end
 
-    #run all residents
-    l_v = [length(pos_res_inf);length(pos_iso_inf);length(pos_psw_inf);length(pos_nurse_inf);length(pos_diet_inf);length(pos_hk_inf)] ##saving the length in a vector
-    cl_v = cumsum(l_v) #saving the cummulative length
-    n_total_ind = sum(l_v) ##number of updates that are performed
-
-    for ww = 1:n_total_ind
-
-        kk = rand(1:n_total_ind) #randomly takes one individual
-
-        if kk <= cl_v[1] ###we can use the same test for non-iso and isolates
-            i = pos_res_inf[kk]
-            x = res[i]
-            line = 1 ##contact matrix's line that we look at #not using anymore
-            contact(x,res,hcw,pos_res,pos_iso,pos_psw,pos_nurse,pos_diet,pos_hk,line,t_in_day,P)
-        elseif kk <= cl_v[2]
-            kk -= cl_v[1]
-            i = pos_iso_inf[kk]
-            x = res[i]
-            line = 2
-            contact(x,res,hcw,pos_res,pos_iso,pos_psw,pos_nurse,pos_diet,pos_hk,line,t_in_day,P)
-        elseif kk <= cl_v[3]
-            kk -= (cl_v[2]) 
-            i = pos_psw_inf[kk]
-            x = hcw[i]
-            line = 3
-            contact(x,res,hcw,pos_res,pos_iso,pos_psw,pos_nurse,pos_diet,pos_hk,line,t_in_day,P)
-        elseif kk <= cl_v[4]
-            kk -= (cl_v[3]) 
-            i = pos_nurse_inf[kk]
-            x = hcw[i]
-            line = 3
-            contact(x,res,hcw,pos_res,pos_iso,pos_psw,pos_nurse,pos_diet,pos_hk,line,t_in_day,P)
-        elseif kk <= cl_v[5]
-            kk -= (cl_v[4]) 
-            i = pos_diet_inf[kk]
-            x = hcw[i]
-            line = 3
-            contact(x,res,hcw,pos_res,pos_iso,pos_psw,pos_nurse,pos_diet,pos_hk,line,t_in_day,P)
-        elseif kk <= cl_v[6]
-            kk -= (cl_v[5]) 
-            i = pos_hk_inf[kk]
-            x = hcw[i]
-            line = 3
-            contact(x,res,hcw,pos_res,pos_iso,pos_psw,pos_nurse,pos_diet,pos_hk,line,t_in_day,P)
+        elseif x.health == PRE
+            for j = 1:x.contacts_res[t]
+                r = rand(pos_res)
+                y = residents[r]
+                if y.health == SUS
+                    perform_contact(y,ih,0.0,0.0,0.0)
+                end
+            end
         end
     end
+    red::Float64 = 0.0
+    for i in [pos_nurse;pos_psw;pos_hk;pos_diet]
+        x = hcw[i]
+        ih = x.health
+        if x.health == ASYMP
+            red = P.asymp_red_idx
+            for j = 1:x.contacts_nurse[t]
+                r = rand(pos_nurse)
+                y = hcw[r]
+                if y.health == SUS
+                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                end
+            end
+
+            for j = 1:x.contacts_psw[t]
+                r = rand(pos_psw)
+                y = hcw[r]
+                if y.health == SUS
+                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                end
+            end
+
+            for j = 1:x.contacts_diet[t]
+                r = rand(pos_diet)
+                y = hcw[r]
+                if y.health == SUS
+                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                end
+            end
+
+            for j = 1:x.contacts_hk[t]
+                r = rand(pos_hk)
+                y = hcw[r]
+                if y.health == SUS
+                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                end
+            end
+        elseif x.health == PRE
+            red = 0.0
+            for j = 1:x.contacts_nurse[t]
+                r = rand(pos_nurse)
+                y = hcw[r]
+                if y.health == SUS
+                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                end
+            end
+
+            for j = 1:x.contacts_psw[t]
+                r = rand(pos_psw)
+                y = hcw[r]
+                if y.health == SUS
+                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                end
+            end
+
+            for j = 1:x.contacts_diet[t]
+                r = rand(pos_diet)
+                y = hcw[r]
+                if y.health == SUS
+                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                end
+            end
+
+            for j = 1:x.contacts_hk[t]
+                r = rand(pos_hk)
+                y = hcw[r]
+                if y.health == SUS
+                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                end
+            end
+        end
+
+    end #close for x
+
+    for i in [pos_psw;pos_nurse]
+        x = hcw[i]
+        ih = x.health
+        for kk = 1:x.contacts_res[t]
+            x.contacts_done += 1
+            y = residents[x.res_care[x.contacts_done]]
+            if x.health == SUS
+                ih = y.health
+                if y.health == ASYMP
+                    red = y.iso ? P.n95 : P.normal_mask
+                    perform_contact(x,ih,P.asymp_red_idx,red,0.0)
+                elseif y.health == PRE
+                    red = y.iso ? P.n95 : P.normal_mask
+                    perform_contact(x,ih,0.0,red,0.0)
+
+                elseif y.health == MILD
+                    red = y.iso ? P.n95 : P.normal_mask
+                    perform_contact(x,ih,P.mild_red_idx,red,0.0)
+                elseif y.health == SEV
+                    red = y.iso ? P.n95 : P.normal_mask
+                    perform_contact(x,ih,P.sev_red_idx,red,0.0)
+                end
+            elseif x.health == ASYMP
+                if y.health == SUS
+                    red = y.iso ? P.n95 : P.normal_mask
+                    perform_contact(y,ih,P.asymp_red_idx,red,0.0)
+                end
+            elseif x.health == PRE
+                if y.health == SUS
+                    red = y.iso ? P.n95 : P.normal_mask
+                    perform_contact(y,ih,0.0,red,0.0)
+                end
+            end
+        end
+    end#close for x
 
 end#close function
 
-function contact(x,res,hcw,pos_res::Array{Int64,1},pos_iso::Array{Int64,1},pos_psw::Array{Int64,1},pos_nurse::Array{Int64,1},pos_diet::Array{Int64,1},pos_hk::Array{Int64,1},line::Int64,t::Int64,P::ModelParameters)
+function perform_contact(sus_ind,ih,red_idx::Float64,mask_y::Float64,mask_x::Float64)
 
-    res_class = x.room_idx > 0 ? true : false
+    r = rand()
+    if r < P.β*(1-mask_y)*(1-mask_x)*(1-red_idx)
+        sus_ind.swap = LAT
+        sus_ind.exp = sus_ind.tis   ## force the move to latent in the next time step.
+        sus_ind.sickfrom = ih ## stores the infector's status to the infectee's sickfrom
+    end
     
-    if x.health == SUS
-        
-    elseif x.health == MILD || x.health == SEV
-       
-        reduction_idx = x.health == MILD ? P.mild_red_idx :  P.sev_red_idx
-        
-       
-        performing_contacts_p2p(x,res,pos_res,x.contacts_res[t],P,reduction_idx,res_class,t) ##normal residents are in position 1
-        #performing_contacts_p2p(x,res,pos_iso,x.contacts_res[t],P,reduction_idx,res_class,t) ##communal areas are in position 2
-        performing_contacts_p2p(x,hcw,pos_psw,x.contacts_psw[t],P,reduction_idx,!res_class,t) ##isolation rooms are in pos 3 of n contacts
-        performing_contacts_p2p(x,hcw,pos_nurse,x.contacts_nurse[t],P,reduction_idx,!res_class,t) ##isolation rooms are in pos 3 of n contacts
-        performing_contacts_p2p(x,hcw,pos_diet,x.contacts_diet[t],P,reduction_idx,!res_class,t) ##isolation rooms are in pos 3 of n contacts
-        performing_contacts_p2p(x,hcw,pos_hk,x.contacts_hk[t],P,reduction_idx,!res_class,t) ##isolation rooms are in pos 3 of n contacts
-       
-    elseif x.health == ASYMP || x.health == PRE
-
-        reduction_idx = x.health == ASYMP ? P.asymp_red_idx : 1.0
-        
-        if x.room_idx < 0
-            performing_contacts_p2p(x,res,[pos_res;pos_iso],x.contacts_res[t],P,reduction_idx,res_class,t) ##normal residents are in position 1
-        else
-            performing_contacts_p2p(x,res,pos_res,x.contacts_res[t],P,reduction_idx,res_class,t) ##normal residents are in position 1
-        end
-        #performing_contacts_p2p(x,res,pos_iso,x.contacts_res[t],P,reduction_idx,res_class,t) ##communal areas are in position 2
-        performing_contacts_p2p(x,hcw,pos_psw,x.contacts_psw[t],P,reduction_idx,!res_class,t) ##isolation rooms are in pos 3 of n contacts
-        performing_contacts_p2p(x,hcw,pos_nurse,x.contacts_nurse[t],P,reduction_idx,!res_class,t) ##isolation rooms are in pos 3 of n contacts
-        performing_contacts_p2p(x,hcw,pos_diet,x.contacts_diet[t],P,reduction_idx,!res_class,t) ##isolation rooms are in pos 3 of n contacts
-        performing_contacts_p2p(x,hcw,pos_hk,x.contacts_hk[t],P,reduction_idx,!res_class,t) ##isolation rooms are in pos 3 of n contacts
-        
-    end
-end
-
-
-function n_contacts_sample(average,P)
-    dist = Poisson(average*P.step)
-    nc = rand(dist)
-    return nc
-end
-
-
-function performing_contacts_p2p(x::Humans,group,pos::Array{Int64,1},contacts::Int64,P::ModelParameters,reduction_idx::Float64,same_class::Bool,t::Int64)
-    ih = x.health
-    if length(pos) > 0
-        for w = 1:contacts
-            k = rand(pos)
-            y = group[k]
-
-            if x.room_idx > 0
-                c = y.contacts_res[t]
-                if c > 0 
-                    y.contacts_res[t] -= 1
-                end
-            elseif x.staff_type == :nurse
-                c = y.contacts_nurse[t]
-                if c > 0 
-                    y.contacts_nurse[t] -= 1
-                end
-            elseif x.staff_type == :psw
-                c = y.contacts_psw[t]
-                if c > 0 
-                    y.contacts_psw[t] -= 1
-                end
-            elseif x.staff_type == :hk
-                c = y.contacts_hk[t]
-                if c > 0 
-                    y.contacts_hk[t] -= 1
-                end
-            elseif x.staff_type == :diet
-                c = y.contacts_diet[t]
-                if c > 0 
-                    y.contacts_diet[t] -= 1
-                end
-            end
-
-            #c = same_class ? y.contacts_same_class[t] : y.contacts_other_class[t]
-            if c > 0
-               
-                if y.health == SUS && y.swap == UNDEF
-                    bf = P.β*reduction_idx ## baseline PRE
-                    # values coming from FRASER Figure 2... relative tranmissibilities of different stages.
-                    #=if ih == ASYMP
-                        bf = bf * 0.11
-                    elseif ih == MILD || ih == MISO 
-                        bf = bf * 0.44
-                    elseif ih == INF || ih == IISO 
-                        bf = bf * 0.89
-                    end=#
-                    if rand() < bf*(1.0-x.mask_ef)*(1.0-y.mask_ef) ###implement  masking here
-                        y.swap = LAT
-                        y.exp = y.tis   ## force the move to latent in the next time step.
-                        y.sickfrom = ih ## stores the infector's status to the infectee's sickfrom
-                    end 
-                end
-            end
-        end
-    end
 end
 
 function forcing_contact_res(res::Array{Humans,1},P::ModelParameters)

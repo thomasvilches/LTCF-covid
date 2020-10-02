@@ -4,7 +4,7 @@ addprocs(4)
 @everywhere using DelimitedFiles
 @everywhere using Parameters, Distributions, StatsBase, StaticArrays, Random, Match, DataFrames
 @everywhere using CSV
-@everywhere include("parameters.jl")
+#@everywhere include("parameters.jl")
 @everywhere include("covid19_hosp_abm.jl")
 
 function name_files(ip::ModelParameters)
@@ -122,7 +122,7 @@ function runsim(simnum, ip::ModelParameters)
 end
 
 
-@everywhere ip = ModelParameters(β = 0.191, type_h = :old, iso_strat = :total,testing = false,test_interval = 14) #new0.25 old 0.197
+@everywhere ip = ModelParameters(β = 0.05, type_h = :new, iso_strat = :total,testing = false,test_interval = 14) #new0.25 old 0.197
 runsim(2000,ip)
 
 
