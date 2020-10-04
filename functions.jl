@@ -190,8 +190,8 @@ function creating_hcw_pop(hcw_per_shift::Array{Int64,1},dist_PSW::Array{Int64,1}
         i += 1
     end
     ### Now housekeeper
-    aux = cumsum(dist_diet)
-    for k = 1:(sum(dist_diet))
+    aux = cumsum(dist_HK)
+    for k = 1:(sum(dist_HK))
         hcw[i]  = Humans()
         ri = findfirst(x-> x >= k, aux)
         initializing_hcw(hcw[i],P,i,ri)
@@ -834,4 +834,27 @@ function infectivity(d::Int64)
         a = 1
     end
  return M[a,:]
+end
+
+
+function create_subs(x::Humans)
+   
+    x.health = SUS
+    x.swap = UNDEF
+    x.sickfrom = UNDEF
+    x.wentTo = UNDEF
+    
+    x.tis   = 0   # time in state 
+    x.exp  = 999   # max statetime
+    #x.doi::Float64   = 999   # day of infection.
+    x.iso = false
+    x.timeiso = 0
+    x.iso_symp = false
+    x.tested = false
+    x.sub = true
+    h_test = -1
+    h_t_delay = -1
+    iso_when = UNDEF
+    tested_when = UNDEF
+   
 end

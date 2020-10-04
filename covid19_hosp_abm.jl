@@ -66,6 +66,7 @@ include("update_funtions.jl")
 ## constants 
 const residents = Array{Humans}(undef, 0)
 const hcw = Array{Humans}(undef, 0)
+const hcw_sub = Array{Humans}(undef, 0)
 const rooms = Array{Rooms}(undef, 0) 
 const P = ModelParameters()  ## setup default parameters
 const agebraks = @SVector [0:4, 5:19, 20:49, 50:64, 65:99]
@@ -110,6 +111,13 @@ function main(P::ModelParameters,sim_idx::Int64)
     hcw_per_shift,dist_PSW,dist_nurse,dist_HK,dist_diet = shift_numbers(P.type_h)
     
     creating_hcw_pop(hcw_per_shift,dist_PSW,dist_nurse,dist_HK,dist_diet)
+    resize!(hcw_sub,length(hcw))
+    for i = 1:length(hcw_sub)
+        hcw_sub[i] = Humans()
+      #=   for x in propertynames(hcw[i])
+            setfield!(hcw_sub[i], x, getfield(hcw[i], x))
+        end =#
+    end
 
     insert_infected(LAT, 1,residents,rooms)
 
@@ -174,6 +182,15 @@ function main(P::ModelParameters,sim_idx::Int64)
                 contact_dynamics(residents,hcw,P,n_shift,t_in_day)
                 (lat_res_ct[t], pre_res_ct[t], asymp_res_ct[t], mild_res_ct[t], hosp_res_ct[t], sev_res_ct[t], rec_res_ct[t], dead_res_ct[t]) = time_update(residents,rooms,P) #updating the residents
                 (lat_hcw_ct[t], pre_hcw_ct[t], asymp_hcw_ct[t], mild_hcw_ct[t], hosp_hcw_ct[t], sev_hcw_ct[t], rec_hcw_ct[t], dead_hcw_ct[t]) = time_update(hcw,rooms,P) ##updating the hcw
+                (lat_iso, pre_iso, asymp_iso, mild_iso, hosp_iso, sev_iso, rec_iso, dead_iso) = time_update(hcw_sub,rooms,P) ##updating the hcw
+                lat_hcw_ct[t] += lat_iso
+                pre_hcw_ct[t] += pre_iso
+                asymp_hcw_ct[t] += asymp_iso
+                mild_hcw_ct[t] += mild_iso
+                hosp_hcw_ct[t] += hosp_iso
+                sev_hcw_ct[t] += sev_iso
+                rec_hcw_ct[t] += rec_iso
+                dead_hcw_ct[t] += dead_iso
                 t_in_day+=1
                 global t += 1
             end #end h
@@ -185,6 +202,15 @@ function main(P::ModelParameters,sim_idx::Int64)
 
             (lat_res_ct[t], pre_res_ct[t], asymp_res_ct[t], mild_res_ct[t], hosp_res_ct[t], sev_res_ct[t], rec_res_ct[t], dead_res_ct[t]) = time_update(residents,rooms,P) #updating the residents
             (lat_hcw_ct[t], pre_hcw_ct[t], asymp_hcw_ct[t], mild_hcw_ct[t], hosp_hcw_ct[t], sev_hcw_ct[t], rec_hcw_ct[t], dead_hcw_ct[t]) = time_update(hcw,rooms,P) ##updating the hcw
+            (lat_iso, pre_iso, asymp_iso, mild_iso, hosp_iso, sev_iso, rec_iso, dead_iso) = time_update(hcw_sub,rooms,P) ##updating the hcw
+            lat_hcw_ct[t] += lat_iso
+            pre_hcw_ct[t] += pre_iso
+            asymp_hcw_ct[t] += asymp_iso
+            mild_hcw_ct[t] += mild_iso
+            hosp_hcw_ct[t] += hosp_iso
+            sev_hcw_ct[t] += sev_iso
+            rec_hcw_ct[t] += rec_iso
+            dead_hcw_ct[t] += dead_iso
             t_in_day+=1
             global t += 1
         end #end n_shift

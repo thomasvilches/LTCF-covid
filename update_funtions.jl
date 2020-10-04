@@ -8,16 +8,31 @@ function time_update(group,rooms,P)
 
         if x.iso
             x.timeiso += P.step
-            if x.timeiso >= max(P.iso_days,x.infp) ### a person must be recovered to get back 
-                if x.health != DEAD 
-                    if x.room_idx > 0
+            if x.timeiso >= P.iso_days#x.infp#max(P.iso_days,x.infp) ### a person must be recovered to get back 
+                
+                if x.room_idx > 0
+                    if x.health != DEAD
                         if rooms[x.room_idx].n_symp_res == 0 
                             x.iso = false
                         end
-                    else
+                    end
+                else
+                    if x.health == REC 
                         x.iso = false
+                        x.sub = false
+                        x.iso_symp = false
+                        x.exp = 999
+                        for k in propertynames(x)
+                            setfield!(hcw[x.idx], k, getfield(x, k))
+                        end
+                    elseif x.health == DEAD
+                        x.iso = false
+                        x.sub = false
+                        x.iso_symp = false
+                        hcw[x.idx].sub = false
                     end
                 end
+               
                 #= if x.health == REC && x.room_idx > 0 ##if they are not dead and are an individual
                     rooms[x.room_idx].n_symp_res -= 1 ###This person is not consider symp anymore
                     #x.room_idx = x.reg_r_idx ##get back to their room
@@ -116,7 +131,7 @@ end
 export move_to_pre
 
 function move_to_mild(x::Humans,rooms::Array{Rooms,1})
-
+    println("entrou aqui-MILD")
     ## transfers human h to the mild infection stage for γ days
     x.health = MILD     
     x.tis = 0 
@@ -259,7 +274,7 @@ function move_to_hosp(x::Humans,rooms::Array{Rooms,1})
             end
         end
     end
-    x.infp = x.exp
+   
   #=
     if rand() < mh[x.ag]
         x.tis = x.exp  
@@ -316,6 +331,16 @@ function iso_ind(x::Humans)
         x.tested = false
         if x.room_idx > 0
             rooms[x.room_idx].n_symp_res += 1
+        else
+            if !x.sub
+                println("entrou aqui")
+                for k in propertynames(x)
+                    setfield!(hcw_sub[x.idx], k, getfield(x, k))
+                end
+                create_subs(x)
+            else
+                create_subs(x)
+            end
         end
         x.iso_when = x.health
     elseif P.iso_strat == :total
@@ -330,9 +355,21 @@ function iso_ind(x::Humans)
                 residents[kk].iso = true
                 residents[kk].timeiso = 0
             end
+
+        else
+            if !x.sub
+                println("entrou aqui")
+                for k in propertynames(x)
+                    setfield!(hcw_sub[x.idx], k, getfield(x, k))
+                end
+                create_subs(x)
+            else
+                create_subs(x)
+            end
         end
         x.iso_when = x.health
     end
+    
     
 end
 function cleaning_rooms(rooms::Array{Rooms,1},pos)
