@@ -15,7 +15,7 @@ end
 
 function create_folder(ip::ModelParameters)
     test = ip.testing ? "test_$(ip.test_interval)" : "not_testing"
-    RF = string("results_$(ip.type_h)_$(ip.iso_strat)_$(test)") ## 
+    RF = string("results_$(ip.type_h)_$(ip.iso_strat)_$(test)_$(ip.fixed_res)") ## 
     if !Base.Filesystem.isdir(RF)
         Base.Filesystem.mkpath(RF)
     end
@@ -122,24 +122,86 @@ function runsim(simnum, ip::ModelParameters)
 end
 
 
-@everywhere ip = ModelParameters(β = 0.05, type_h = :new, iso_strat = :total,testing = false,test_interval = 14) #new0.25 old 0.197
+@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = false) #new0.25 old 0.197
+runsim(2000,ip)
+
+
+@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = false) #new0.25 old 0.197
 runsim(2000,ip)
 
 
 
 #hospital_data = CSV.read("data/rooms_hosp.csv")
 
-@everywhere ip = ModelParameters(β = 0.239, type_h = :new, iso_strat = :total,testing = true,test_interval = 14) #new0.25 old 0.197
+@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = true,test_interval = 14) #new0.25 old 0.197
+runsim(2000,ip)
+
+@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = true,test_interval = 7) #new0.25 old 0.197s
+runsim(2000,ip)
+
+@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = true,test_interval = 14) #new0.25 old 0.197
+runsim(2000,ip)
+
+@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = true,test_interval = 7) #new0.25 old 0.197
 runsim(2000,ip)
 
 
-@everywhere ip = ModelParameters(β = 0.239, type_h = :new, iso_strat = :total,testing = true,test_interval = 7) #new0.25 old 0.197
+########################################################
+###############333 fixed contacts
+
+@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = false,fixed_res=1) #new0.25 old 0.197
 runsim(2000,ip)
 
 
-@everywhere ip = ModelParameters(β = 0.195, type_h = :old, iso_strat = :total,testing = true,test_interval = 14) #new0.25 old 0.197
+@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = false,fixed_res=1) #new0.25 old 0.197
 runsim(2000,ip)
 
 
-@everywhere ip = ModelParameters(β = 0.195, type_h = :old, iso_strat = :total,testing = true,test_interval = 7) #new0.25 old 0.197
+@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = false,fixed_res=2) #new0.25 old 0.197
+runsim(2000,ip)
+
+
+@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = false,fixed_res=2) #new0.25 old 0.197
+runsim(2000,ip)
+
+
+
+#hospital_data = CSV.read("data/rooms_hosp.csv")
+
+@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = true,test_interval = 14,fixed_res=1) #new0.25 old 0.197
+runsim(2000,ip)
+
+
+
+@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = true,test_interval = 7,fixed_res=1) #new0.25 old 0.197s
+runsim(2000,ip)
+
+
+
+@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = true,test_interval = 14,fixed_res=1) #new0.25 old 0.197
+runsim(2000,ip)
+
+
+@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = true,test_interval = 7,fixed_res=1) #new0.25 old 0.197
+runsim(2000,ip)
+
+
+
+#hospital_data = CSV.read("data/rooms_hosp.csv")
+
+@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = true,test_interval = 14,fixed_res=2) #new0.25 old 0.197
+runsim(2000,ip)
+
+
+
+@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = true,test_interval = 7,fixed_res=2) #new0.25 old 0.197s
+runsim(2000,ip)
+
+
+
+@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = true,test_interval = 14,fixed_res=2) #new0.25 old 0.197
+runsim(2000,ip)
+
+
+@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = true,test_interval = 7,fixed_res=2) #new0.25 old 0.197
 runsim(2000,ip)

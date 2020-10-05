@@ -44,8 +44,8 @@ using Parameters, Distributions, StatsBase, StaticArrays, Random, Match, DataFra
     test_interval::Int64 = 14
     testing::Bool = false
 
-    sub_hcw::Bool = false
-
+    #sub_hcw::Bool = false
+    fixed_res::Int64 = 0
 end
 
 Base.@kwdef mutable struct ct_data_collect
@@ -152,15 +152,15 @@ function main(P::ModelParameters,sim_idx::Int64)
     
 
     t::Int64 = 1
-    t = 1
+   # t = 1
     
     t_testing::Int64 = 0
-    t_testing = 0
+    #t_testing = 0
     #initiates the dynamics
     for t_d = 1:P.modeltime ##run days
-        #t_in_day::Int64 = 1
-        println(t_d)
-        t_in_day = 1
+        t_in_day::Int64 = 1
+        #println(t_d)
+        #t_in_day = 1
             ##3number of contacts per day residents
         daily_contacts_res(residents)
        
@@ -171,7 +171,7 @@ function main(P::ModelParameters,sim_idx::Int64)
                     testing_individuals(hcw)
                 end
                 update_tested(hcw)
-                global t_testing += 1
+                t_testing += 1
             end
         end
 
@@ -192,7 +192,7 @@ function main(P::ModelParameters,sim_idx::Int64)
                 rec_hcw_ct[t] += rec_iso
                 dead_hcw_ct[t] += dead_iso
                 t_in_day+=1
-                global t += 1
+                t += 1
             end #end h
             #the 8-th hour is run here. 
             #Must copy everything inside the above loop here
@@ -212,7 +212,7 @@ function main(P::ModelParameters,sim_idx::Int64)
             rec_hcw_ct[t] += rec_iso
             dead_hcw_ct[t] += dead_iso
             t_in_day+=1
-            global t += 1
+            t += 1
         end #end n_shift
 
     end #end t_d

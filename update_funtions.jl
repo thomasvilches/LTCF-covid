@@ -22,9 +22,20 @@ function time_update(group,rooms,P)
                         x.sub = false
                         x.iso_symp = false
                         x.exp = 999
+
+                        for i = 1:length(x.contacts_res)
+                            x.contacts_res[i] = hcw[x.idx].contacts_res[i]
+                            x.contacts_psw[i] = hcw[x.idx].contacts_psw[i]
+                            x.contacts_nurse[i] = hcw[x.idx].contacts_nurse[i]
+                            x.contacts_diet[i] = hcw[x.idx].contacts_diet[i]
+                            x.contacts_hk[i] = hcw[x.idx].contacts_hk[i]
+                        end
+                        x.contacts_done = hcw[x.idx].contacts_done
+                        x.n_contacts = hcw[x.idx].n_contacts 
                         for k in propertynames(x)
                             setfield!(hcw[x.idx], k, getfield(x, k))
                         end
+
                     elseif x.health == DEAD
                         x.iso = false
                         x.sub = false
@@ -131,7 +142,7 @@ end
 export move_to_pre
 
 function move_to_mild(x::Humans,rooms::Array{Rooms,1})
-    println("entrou aqui-MILD")
+    #println("entrou aqui-MILD")
     ## transfers human h to the mild infection stage for γ days
     x.health = MILD     
     x.tis = 0 
@@ -333,7 +344,7 @@ function iso_ind(x::Humans)
             rooms[x.room_idx].n_symp_res += 1
         else
             if !x.sub
-                println("entrou aqui")
+                #println("entrou aqui")
                 for k in propertynames(x)
                     setfield!(hcw_sub[x.idx], k, getfield(x, k))
                 end
@@ -358,7 +369,7 @@ function iso_ind(x::Humans)
 
         else
             if !x.sub
-                println("entrou aqui")
+                #println("entrou aqui")
                 for k in propertynames(x)
                     setfield!(hcw_sub[x.idx], k, getfield(x, k))
                 end

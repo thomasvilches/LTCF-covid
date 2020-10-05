@@ -296,9 +296,7 @@ function daily_contacts_hcw(n_shift::Int64)
 
     aux_hk = findall(y-> y.staff_type == :hk && y.shift == n_shift && (!y.iso || (y.iso && y.sub)),hcw)
 
-    aux_res = findall(y-> !(y.health in (DEAD,HOSP)),residents)
-
-
+    #aux_res = findall(y-> !(y.health in (DEAD,HOSP)),residents)
 
     for x in hcw
         x.contacts_done = 0
@@ -309,34 +307,145 @@ function daily_contacts_hcw(n_shift::Int64)
             x.contacts_nurse[i] = 0
             x.contacts_hk[i] = 0
         end
+        for i = 1:length(x.res_care)
+            x.res_care[i] = 0
+        end
     end
 
-    for j in aux_res
-        y = residents[j]
+    psw_idx::Int64 = 0
+    nurse_idx::Int64 = 0
 
-        r = rand(aux_psw)
-        x = hcw[r]
-        aux = x.shift
-        hmin = (aux-1)*8+1
-        hmax = aux*8
+    if P.fixed_res == 1
+        aux = [i  for i = 1:length(residents)]
+        for j in aux
+            y = residents[j]
+            psw_idx += 1
+            psw_idx = psw_idx > length(aux_psw) ? 1 : psw_idx
+            nurse_idx += 1
+            nurse_idx = nurse_idx > length(aux_nurse) ? 1 : nurse_idx
+            if !(y.health in (HOSP,DEAD))
+                r = aux_psw[psw_idx]
+                x = hcw[r]
+                aux = x.shift
+                hmin = (aux-1)*8+1
+                hmax = aux*8
+                
+                r = rand(hmin:hmax)
+                x.contacts_res[r] += 1
+                x.n_contacts += 1
+                x.res_care[x.n_contacts] = y.idx
+                
+                r = aux_nurse[nurse_idx]
+                x = hcw[r]
+                aux = x.shift
+                hmin = (aux-1)*8+1
+                hmax = aux*8
+                
+                r = rand(hmin:hmax)
+                x.contacts_res[r] += 1
+                x.n_contacts += 1
+                x.res_care[x.n_contacts] = y.idx
+                
+
+            end
+        end
+    elseif P.fixed_res == 0
+        aux = shuffle([i  for i = 1:length(residents)])
+
+        for j in aux
+            y = residents[j]
+            psw_idx += 1
+            psw_idx = psw_idx > length(aux_psw) ? 1 : psw_idx
+            nurse_idx += 1
+            nurse_idx = nurse_idx > length(aux_nurse) ? 1 : nurse_idx
+            if !(y.health in (HOSP,DEAD))
+                r = aux_psw[psw_idx]
+                x = hcw[r]
+                aux = x.shift
+                hmin = (aux-1)*8+1
+                hmax = aux*8
+                
+                r = rand(hmin:hmax)
+                x.contacts_res[r] += 1
+                x.n_contacts += 1
+                x.res_care[x.n_contacts] = y.idx
+                
+                r = aux_nurse[nurse_idx]
+                x = hcw[r]
+                aux = x.shift
+                hmin = (aux-1)*8+1
+                hmax = aux*8
+                
+                r = rand(hmin:hmax)
+                x.contacts_res[r] += 1
+                x.n_contacts += 1
+                x.res_care[x.n_contacts] = y.idx
+                
+
+            end
+        end
+    elseif P.fixed_res == 2
+
+        aux = [i  for i = 1:length(residents)]
+
+        aux_psw_1 = Int(floor(length(aux)/length(aux_psw)))
+        aux_psw_2 = length(aux)%length(aux_psw)
+
+        aux_nurse_1 = Int(floor(length(aux)/length(aux_nurse)))
+        aux_nurse_2 = length(aux)%length(aux_nurse)
+
+        n_c_psw = repeat([aux_psw_1],length(aux_psw))
+        n_c_nurse = repeat([aux_nurse_1],length(aux_psw))
+        for j = 1:aux_psw_2
+            n_c_psw[j]+=1
+        end
+        for j = 1:aux_nurse_2
+            n_c_nurse[j]+=1
+        end
         
-        r = rand(hmin:hmax)
-        x.contacts_res[r] += 1
-        x.n_contacts += 1
-        x.res_care[x.n_contacts] = y.idx
 
-
-        r = rand(aux_nurse)
-        x = hcw[r]
-        aux = x.shift
-        hmin = (aux-1)*8+1
-        hmax = aux*8
+        psw_idx = 1
+        nurse_idx = 1
+        total = 0
         
-        r = rand(hmin:hmax)
-        x.contacts_res[r] += 1
-        x.n_contacts += 1
-        x.res_care[x.n_contacts] = y.idx
+        for j in aux
+            y = residents[j]
+            total += 1
+            if total > cumsum(n_c_nurse)[nurse_idx]
+               nurse_idx += 1
+            end
+            if total > cumsum(n_c_psw)[psw_idx]
+                psw_idx += 1
+            end
+            
+            if !(y.health in (HOSP,DEAD))
+                r = aux_psw[psw_idx]
+                x = hcw[r]
+                aux = x.shift
+                hmin = (aux-1)*8+1
+                hmax = aux*8
+                
+                r = rand(hmin:hmax)
+                x.contacts_res[r] += 1
+                x.n_contacts += 1
+                x.res_care[x.n_contacts] = y.idx
+                
+                r = aux_nurse[nurse_idx]
+                x = hcw[r]
+                aux = x.shift
+                hmin = (aux-1)*8+1
+                hmax = aux*8
+                
+                r = rand(hmin:hmax)
+                x.contacts_res[r] += 1
+                x.n_contacts += 1
+                x.res_care[x.n_contacts] = y.idx
+                
+
+            end
+        end
     end
+
     
     
     for idx in aux_psw
@@ -563,8 +672,11 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
     for i in [pos_psw;pos_nurse]
         x = hcw[i]
         ih = x.health
+       
         for kk = 1:x.contacts_res[t]
+
             x.contacts_done += 1
+            #println("$(x.idx) $i $(x.contacts_done) $(x.res_care[x.contacts_done])")
             y = residents[x.res_care[x.contacts_done]]
             if x.health == SUS
                 ih = y.health
