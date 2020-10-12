@@ -28,6 +28,7 @@ Base.@kwdef mutable struct Humans
     contacts_hk::Array{Int64,1} = repeat([0],24)
     contacts_diet::Array{Int64,1} = repeat([0],24)
     infected_by::Int64 = -1
+    infected_by_type::Symbol = :none
     comorbidity::Int16 = 0
     staff_type::Symbol = :none ##:psw :diet :hk :nurse
     mask_ef::Float64 = 0.0
@@ -39,7 +40,7 @@ Base.@kwdef mutable struct Humans
     iso_symp::Bool = false
     sub::Bool = false
 
-    res_care::Array{Int64,1} = repeat([0],200)
+    res_care::Array{Int64,1} = repeat([0],70)
     n_contacts::Int64 = 0
     contacts_done::Int64 = 0
 

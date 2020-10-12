@@ -12,7 +12,7 @@ using Parameters, Distributions, StatsBase, StaticArrays, Random, Match, DataFra
     fpre::Float64 = 1.0 ## NOT USED ANYMORE (percent going to presymptomatic)
     frelasymp::Float64 = 0.11 ## relative transmission of asymptomatic
     #cidtime::Int8 = 0  ## time to identification (for CT) post symptom onset
-    number_of_residents::Int64 = 167
+    number_of_residents::Int64 = 120
     hcw_per_shift::Int64 = 16
     staff_per_shift::Int64 = 5
     n_rooms::Int64 = 127
@@ -30,7 +30,7 @@ using Parameters, Distributions, StatsBase, StaticArrays, Random, Match, DataFra
     iso_days::Float64 = 14.0
 
     type_h::Symbol = :new
-    iso_strat::Symbol = :only
+    iso_strat::Symbol = :total
 
     visitor_mask::Float64 = 0.3
     staff_mask::Float64 = 0.85
@@ -39,10 +39,12 @@ using Parameters, Distributions, StatsBase, StaticArrays, Random, Match, DataFra
     normal_mask::Float64 = 0.67
     n95::Float64 = 0.95
 
-    test_sens::Float64 = 1.0
+    test_sens_hcw::Float64 = 1.0
+    test_sens_res::Float64 = 1.0
     start_test::Int64 = 7
     test_interval::Int64 = 14
-    testing::Bool = false
+    testing_hcw::Bool = false
+    testing_res::Bool = false
 
     #sub_hcw::Bool = false
     fixed_res::Int64 = 0
@@ -119,7 +121,7 @@ function main(P::ModelParameters,sim_idx::Int64)
         end =#
     end
 
-    insert_infected(LAT, 1,residents,rooms)
+    first_inf = insert_infected(LAT, 1,hcw,rooms)
 
     time_length = P.modeltime*P.n_shifts_pd*P.n_hours_ps
 
@@ -152,34 +154,66 @@ function main(P::ModelParameters,sim_idx::Int64)
     
 
     t::Int64 = 1
-   # t = 1
-    
-    t_testing::Int64 = 0
+    t = 1
+
+    iso_tested_lat::Int64 = 0
+    iso_tested_pre::Int64 = 0
+    iso_tested_asymp::Int64 = 0
+
+    iso_tested_lat_res::Int64 = 0
+    iso_tested_pre_res::Int64 = 0
+    iso_tested_asymp_res::Int64 = 0
+
+
+    iso_tested_lat = 0
+    iso_tested_pre = 0
+    iso_tested_asymp = 0 
+
+    t_testing::Int64 = -P.start_test+1
     #t_testing = 0
+    t_in_day::Int64 = 1
     #initiates the dynamics
     for t_d = 1:P.modeltime ##run days
-        t_in_day::Int64 = 1
+        
+        if P.testing_res
+            if t_d >= P.start_test
+                #pos = findall(y->y.shift == n_shift,hcw)
+                if t_testing%P.test_interval == 0
+                    testing_individuals(residents,P.test_sens_res)
+                end
+                lat_iso,pre_iso,asymp_iso = update_tested(residents)
+                iso_tested_lat_res+=lat_iso
+                iso_tested_pre_res+=pre_iso
+                iso_tested_asymp_res+=asymp_iso
+                
+            end
+        end
         #println(t_d)
-        #t_in_day = 1
+        t_in_day = 1
             ##3number of contacts per day residents
         daily_contacts_res(residents)
        
-        
-        if P.testing
-            if t_d >= P.start_test
-                if t_testing%P.test_interval == 0
-                    testing_individuals(hcw)
-                end
-                update_tested(hcw)
-                t_testing += 1
-            end
-        end
-
         for n_shift = 1:P.n_shifts_pd #run the 3 shifts
+            #println("$t_d $n_shift")
+            if P.testing_hcw
+                if t_d >= P.start_test
+                    pos = findall(y->y.shift == n_shift,hcw)
+                    if t_testing%P.test_interval == 0
+                        testing_individuals(hcw[pos],P.test_sens_hcw)
+                    end
+                    lat_iso,pre_iso,asymp_iso = update_tested(hcw)
+                    iso_tested_lat+=lat_iso
+                    iso_tested_pre+=pre_iso
+                    iso_tested_asymp+=asymp_iso
+                    #t_testing += 1
+                end
+            end
             daily_contacts_hcw(n_shift)
+            
             for h = 1:(P.n_hours_ps-1)#run the (n-1)th hours in a shift
                # println(t)
                 contact_dynamics(residents,hcw,P,n_shift,t_in_day)
+                
                 (lat_res_ct[t], pre_res_ct[t], asymp_res_ct[t], mild_res_ct[t], hosp_res_ct[t], sev_res_ct[t], rec_res_ct[t], dead_res_ct[t]) = time_update(residents,rooms,P) #updating the residents
                 (lat_hcw_ct[t], pre_hcw_ct[t], asymp_hcw_ct[t], mild_hcw_ct[t], hosp_hcw_ct[t], sev_hcw_ct[t], rec_hcw_ct[t], dead_hcw_ct[t]) = time_update(hcw,rooms,P) ##updating the hcw
                 (lat_iso, pre_iso, asymp_iso, mild_iso, hosp_iso, sev_iso, rec_iso, dead_iso) = time_update(hcw_sub,rooms,P) ##updating the hcw
@@ -192,7 +226,7 @@ function main(P::ModelParameters,sim_idx::Int64)
                 rec_hcw_ct[t] += rec_iso
                 dead_hcw_ct[t] += dead_iso
                 t_in_day+=1
-                t += 1
+               t += 1
             end #end h
             #the 8-th hour is run here. 
             #Must copy everything inside the above loop here
@@ -213,9 +247,13 @@ function main(P::ModelParameters,sim_idx::Int64)
             dead_hcw_ct[t] += dead_iso
             t_in_day+=1
             t += 1
+            
         end #end n_shift
-
+        t_testing += 1
     end #end t_d
 
-    return (lat_res_ct,lat_hcw_ct,pre_res_ct,pre_hcw_ct,asymp_res_ct,asymp_hcw_ct,mild_res_ct,mild_hcw_ct,sev_res_ct,sev_hcw_ct,hosp_res_ct,hosp_hcw_ct,rec_res_ct,rec_hcw_ct,dead_res_ct,dead_hcw_ct)
+    R0=length(findall(x->x.infected_by_type == hcw[first_inf[1]].staff_type,hcw))
+    R0+=length(findall(x->x.infected_by_type == hcw[first_inf[1]].staff_type,residents))
+
+    return (lat_res_ct,lat_hcw_ct,pre_res_ct,pre_hcw_ct,asymp_res_ct,asymp_hcw_ct,mild_res_ct,mild_hcw_ct,sev_res_ct,sev_hcw_ct,hosp_res_ct,hosp_hcw_ct,rec_res_ct,rec_hcw_ct,dead_res_ct,dead_hcw_ct,R0,iso_tested_lat,iso_tested_pre,iso_tested_asymp,iso_tested_lat_res,iso_tested_pre_res,iso_tested_asymp_res)
 end

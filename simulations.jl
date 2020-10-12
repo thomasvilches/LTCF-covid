@@ -13,9 +13,10 @@ function name_files(ip::ModelParameters)
 end
 
 
-function create_folder(ip::ModelParameters)
-    test = ip.testing ? "test_$(ip.test_interval)" : "not_testing"
-    RF = string("results_$(ip.type_h)_$(ip.iso_strat)_$(test)_$(ip.fixed_res)") ## 
+function create_folder(ip::ModelParameters,end_file::String)
+    #test = (ip.testing_res && ip.testing_hcw) ? "test_$(ip.test_interval)" : "not_testing"
+    #RF = string("results_$(ip.type_h)_$(ip.iso_strat)_$(test)_$(ip.fixed_res)") ## 
+    RF = string("results_$(ip.type_h)_$(ip.iso_strat)_$end_file")
     if !Base.Filesystem.isdir(RF)
         Base.Filesystem.mkpath(RF)
     end
@@ -52,6 +53,13 @@ function dataprocess(results, ip::ModelParameters,NUMOFSIMS::Int64, fileappend="
     resultsD_res = zeros(Int64, sim_time, NUMOFSIMS)
     resultsD_hcw = zeros(Int64, sim_time, NUMOFSIMS)
 
+    results_R0 = zeros(Int64, NUMOFSIMS)
+    resultsIso_lat = zeros(Int64, NUMOFSIMS)
+    resultsIso_pre = zeros(Int64, NUMOFSIMS)
+    resultsIso_asymp = zeros(Int64, NUMOFSIMS)
+    resultsIso_lat_res = zeros(Int64, NUMOFSIMS)
+    resultsIso_pre_res = zeros(Int64, NUMOFSIMS)
+    resultsIso_asymp_res = zeros(Int64, NUMOFSIMS)
     for i=1:NUMOFSIMS
         resultsL_res[:,i] = results[i][1]
         resultsL_hcw[:,i] = results[i][2]
@@ -76,6 +84,15 @@ function dataprocess(results, ip::ModelParameters,NUMOFSIMS::Int64, fileappend="
 
         resultsD_res[:,i] = results[i][15]
         resultsD_hcw[:,i] = results[i][16]
+
+        results_R0[i] = results[i][17]
+        resultsIso_lat[i] = results[i][18]
+        resultsIso_pre[i] = results[i][19]
+        resultsIso_asymp[i] = results[i][20]
+
+        resultsIso_lat_res[i] = results[i][21]
+        resultsIso_pre_res[i] = results[i][22]
+        resultsIso_asymp_res[i] = results[i][23]
         
     end
         
@@ -103,13 +120,22 @@ function dataprocess(results, ip::ModelParameters,NUMOFSIMS::Int64, fileappend="
   
     writedlm(string("$fileappend", "_dead_res.dat"),  resultsD_res)
     writedlm(string("$fileappend", "_dead_hcw.dat"),  resultsD_hcw)
+
+    writedlm(string("$fileappend", "_R0.dat"),  results_R0)
+    writedlm(string("$fileappend", "_iso_asymp.dat"),  resultsIso_asymp)
+    writedlm(string("$fileappend", "_iso_lat.dat"),  resultsIso_lat)
+    writedlm(string("$fileappend", "_iso_pre.dat"),  resultsIso_pre)
+
+    writedlm(string("$fileappend", "_iso_asymp_res.dat"),  resultsIso_asymp_res)
+    writedlm(string("$fileappend", "_iso_lat_res.dat"),  resultsIso_lat_res)
+    writedlm(string("$fileappend", "_iso_pre_res.dat"),  resultsIso_pre_res)
    
 end
 
 
-function runsim(simnum, ip::ModelParameters)
+function runsim(simnum, ip::ModelParameters,end_file::String)
     
-    folder = create_folder(ip)
+    folder = create_folder(ip,end_file)
     
     dname = "$folder/beta_$(replace(string(ip.β), "." => "_"))"
 
@@ -122,86 +148,57 @@ function runsim(simnum, ip::ModelParameters)
 end
 
 
-@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = false) #new0.25 old 0.197
-runsim(2000,ip)
+@everywhere ip = ModelParameters(β = 0.058, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0) #new0.25 old 0.197
+runsim(2000,ip,"S0")
 
 
-@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = false) #new0.25 old 0.197
-runsim(2000,ip)
+@everywhere ip = ModelParameters(β = 0.058, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 2) #new0.25 old 0.197
+runsim(2000,ip,"S1")
 
 
-
-#hospital_data = CSV.read("data/rooms_hosp.csv")
-
-@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = true,test_interval = 14) #new0.25 old 0.197
-runsim(2000,ip)
-
-@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = true,test_interval = 7) #new0.25 old 0.197s
-runsim(2000,ip)
-
-@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = true,test_interval = 14) #new0.25 old 0.197
-runsim(2000,ip)
-
-@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = true,test_interval = 7) #new0.25 old 0.197
-runsim(2000,ip)
+@everywhere ip = ModelParameters(β = 0.058, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test_interval = 14) #new0.25 old 0.197
+runsim(2000,ip,"S2a")
 
 
-########################################################
-###############333 fixed contacts
-
-@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = false,fixed_res=1) #new0.25 old 0.197
-runsim(2000,ip)
-
-
-@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = false,fixed_res=1) #new0.25 old 0.197
-runsim(2000,ip)
-
-
-@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = false,fixed_res=2) #new0.25 old 0.197
-runsim(2000,ip)
-
-
-@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = false,fixed_res=2) #new0.25 old 0.197
-runsim(2000,ip)
+@everywhere ip = ModelParameters(β = 0.058, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test_interval = 7) #new0.25 old 0.197
+runsim(2000,ip,"S2b")
 
 
 
-#hospital_data = CSV.read("data/rooms_hosp.csv")
-
-@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = true,test_interval = 14,fixed_res=1) #new0.25 old 0.197
-runsim(2000,ip)
+@everywhere ip = ModelParameters(β = 0.058, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test_interval = 7,start_test=7,test_sens_hcw = 0.85) #new0.25 old 0.197
+runsim(2000,ip,"S3a")
 
 
-
-@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = true,test_interval = 7,fixed_res=1) #new0.25 old 0.197s
-runsim(2000,ip)
+@everywhere ip = ModelParameters(β = 0.058, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test_interval = 3,start_test=3,test_sens_hcw = 0.85) #new0.25 old 0.197
+runsim(2000,ip,"S3b")
 
 
 
-@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = true,test_interval = 14,fixed_res=1) #new0.25 old 0.197
-runsim(2000,ip)
+@everywhere ip = ModelParameters(β = 0.058, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test_interval = 14) #new0.25 old 0.197
+runsim(2000,ip,"S4a")
 
 
-@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = true,test_interval = 7,fixed_res=1) #new0.25 old 0.197
-runsim(2000,ip)
-
-
-
-#hospital_data = CSV.read("data/rooms_hosp.csv")
-
-@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = true,test_interval = 14,fixed_res=2) #new0.25 old 0.197
-runsim(2000,ip)
+@everywhere ip = ModelParameters(β = 0.058, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test_interval = 7) #new0.25 old 0.197
+runsim(2000,ip,"S4b")
 
 
 
-@everywhere ip = ModelParameters(β = 0.052, type_h = :new, iso_strat = :total,testing = true,test_interval = 7,fixed_res=2) #new0.25 old 0.197s
-runsim(2000,ip)
+@everywhere ip = ModelParameters(β = 0.058, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test_interval = 7,start_test=7,test_sens_hcw = 0.85) #new0.25 old 0.197
+runsim(2000,ip,"S5a")
+
+
+@everywhere ip = ModelParameters(β = 0.058, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test_interval = 3,start_test=3,test_sens_hcw = 0.85) #new0.25 old 0.197
+runsim(2000,ip,"S5b")
+
+
+@everywhere ip = ModelParameters(β = 0.058, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=true,fixed_res = 0,test_interval = 7,start_test=7,test_sens_hcw = 0.85,test_sens_res = 0.85) #new0.25 old 0.197
+runsim(2000,ip,"S6a")
+
+
+@everywhere ip = ModelParameters(β = 0.058, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=true,fixed_res = 0,test_interval = 3,start_test=3,test_sens_hcw = 0.85,test_sens_res = 0.85) #new0.25 old 0.197
+runsim(2000,ip,"S6b")
 
 
 
-@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = true,test_interval = 14,fixed_res=2) #new0.25 old 0.197
-runsim(2000,ip)
-
-
-@everywhere ip = ModelParameters(β = 0.0485, type_h = :old, iso_strat = :total,testing = true,test_interval = 7,fixed_res=2) #new0.25 old 0.197
-runsim(2000,ip)
+@everywhere ip = ModelParameters(β = 0.057, type_h = :old, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0) #new0.25 old 0.197
+runsim(2000,ip,"S0")

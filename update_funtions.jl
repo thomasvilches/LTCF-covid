@@ -18,11 +18,6 @@ function time_update(group,rooms,P)
                     end
                 else
                     if x.health == REC 
-                        x.iso = false
-                        x.sub = false
-                        x.iso_symp = false
-                        x.exp = 999
-
                         for i = 1:length(x.contacts_res)
                             x.contacts_res[i] = hcw[x.idx].contacts_res[i]
                             x.contacts_psw[i] = hcw[x.idx].contacts_psw[i]
@@ -32,10 +27,14 @@ function time_update(group,rooms,P)
                         end
                         x.contacts_done = hcw[x.idx].contacts_done
                         x.n_contacts = hcw[x.idx].n_contacts 
+                        x.iso = false
+                        x.sub = false
+                        x.iso_symp = false
+                        x.exp = 999
                         for k in propertynames(x)
                             setfield!(hcw[x.idx], k, getfield(x, k))
                         end
-
+                        
                     elseif x.health == DEAD
                         x.iso = false
                         x.sub = false
@@ -154,7 +153,7 @@ function move_to_mild(x::Humans,rooms::Array{Rooms,1})
     if !x.iso
         x.infp = x.dur[4]
         iso_ind(x)
-        x.iso_symp = true
+       # x.iso_symp = true
     end
 
     # x.iso property remains from either the latent or presymptomatic class
@@ -225,7 +224,7 @@ function move_to_sev(x::Humans,rooms::Array{Rooms,1})
     if !x.iso
         x.infp = x.dur[4]
         iso_ind(x)
-        x.iso_symp = true
+       # x.iso_symp = true
     end
 
     # x.iso property remains from either the latent or presymptomatic class
@@ -340,6 +339,7 @@ function iso_ind(x::Humans)
         x.iso = true
         x.timeiso = 0
         x.tested = false
+        x.iso_when = x.health
         if x.room_idx > 0
             rooms[x.room_idx].n_symp_res += 1
         else
@@ -349,15 +349,17 @@ function iso_ind(x::Humans)
                     setfield!(hcw_sub[x.idx], k, getfield(x, k))
                 end
                 create_subs(x)
+                #hcw_sub[x.idx].iso_when = hcw_sub[x.idx].health
             else
                 create_subs(x)
             end
         end
-        x.iso_when = x.health
+        
     elseif P.iso_strat == :total
         x.iso = true
         x.timeiso = 0
         x.tested = false
+        x.iso_when = x.health
         if x.room_idx > 0
             rooms[x.room_idx].n_symp_res += 1
             
@@ -374,11 +376,12 @@ function iso_ind(x::Humans)
                     setfield!(hcw_sub[x.idx], k, getfield(x, k))
                 end
                 create_subs(x)
+                #hcw_sub[x.idx].iso_when = hcw_sub[x.idx].health
             else
                 create_subs(x)
             end
         end
-        x.iso_when = x.health
+        
     end
     
     

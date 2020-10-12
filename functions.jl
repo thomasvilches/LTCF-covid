@@ -206,14 +206,14 @@ function creating_hcw_pop(hcw_per_shift::Array{Int64,1},dist_PSW::Array{Int64,1}
 
 end
 
-function insert_infected(health, num,res, rooms::Array{Rooms,1}) 
+function insert_infected(health, num,ind, rooms::Array{Rooms,1}) 
     ## inserts a number of infected people in the population randomly
     ## this function should resemble move_to_inf()
-    l = findall(x -> x.health == SUS,res)
+    l = findall(x -> x.health == SUS,ind)
     if length(l) > 0 && num < length(l)
         h = sample(l, num; replace = false)
         @inbounds for i in h 
-            x = res[i]
+            x = ind[i]
             if health == PRE 
                 move_to_pre(x) ## the swap may be asymp, mild, or severe, but we can force severe in the time_update function
             elseif health == LAT 
@@ -288,13 +288,15 @@ end
 function daily_contacts_hcw(n_shift::Int64)
     
   
-    aux_psw = findall(y-> y.staff_type == :psw && y.shift == n_shift && (!y.iso || (y.iso && y.sub)),hcw)
+    aux_psw = findall(y-> y.staff_type == :psw && y.shift == n_shift && (!y.iso),hcw)
 
-    aux_nurse = findall(y-> y.staff_type == :nurse && y.shift == n_shift && (!y.iso || (y.iso && y.sub)),hcw)
+    aux_nurse = findall(y-> y.staff_type == :nurse && y.shift == n_shift && (!y.iso),hcw)
 
-    aux_diet = findall(y-> y.staff_type == :diet && y.shift == n_shift && (!y.iso || (y.iso && y.sub)),hcw)
+    aux_diet = findall(y-> y.staff_type == :diet && y.shift == n_shift && (!y.iso),hcw)
 
-    aux_hk = findall(y-> y.staff_type == :hk && y.shift == n_shift && (!y.iso || (y.iso && y.sub)),hcw)
+    aux_hk = findall(y-> y.staff_type == :hk && y.shift == n_shift && (!y.iso),hcw)
+
+    #println("$(length(aux_psw)),$(length(aux_nurse))")
 
     #aux_res = findall(y-> !(y.health in (DEAD,HOSP)),residents)
 
@@ -403,7 +405,9 @@ function daily_contacts_hcw(n_shift::Int64)
             n_c_nurse[j]+=1
         end
         
-
+       # println(n_c_nurse)
+        #println(n_c_psw)
+        
         psw_idx = 1
         nurse_idx = 1
         total = 0
@@ -439,6 +443,7 @@ function daily_contacts_hcw(n_shift::Int64)
                 r = rand(hmin:hmax)
                 x.contacts_res[r] += 1
                 x.n_contacts += 1
+                #println("$")
                 x.res_care[x.n_contacts] = y.idx
                 
 
@@ -581,7 +586,8 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
                 r = rand(pos_res)
                 y = residents[r]
                 if y.health == SUS
-                    perform_contact(y,ih,P.asymp_red_idx,0.0,0.0)
+                    perform_contact(y,x,ih,P.asymp_red_idx,0.0,0.0)
+                   
                 end
             end
 
@@ -590,7 +596,8 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
                 r = rand(pos_res)
                 y = residents[r]
                 if y.health == SUS
-                    perform_contact(y,ih,0.0,0.0,0.0)
+                    perform_contact(y,x,ih,0.0,0.0,0.0)
+                   
                 end
             end
         end
@@ -605,7 +612,8 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
                 r = rand(pos_nurse)
                 y = hcw[r]
                 if y.health == SUS
-                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                    perform_contact(y,x,ih,red,P.normal_mask,P.normal_mask)
+                   
                 end
             end
 
@@ -613,7 +621,8 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
                 r = rand(pos_psw)
                 y = hcw[r]
                 if y.health == SUS
-                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                    perform_contact(y,x,ih,red,P.normal_mask,P.normal_mask)
+                    
                 end
             end
 
@@ -621,7 +630,8 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
                 r = rand(pos_diet)
                 y = hcw[r]
                 if y.health == SUS
-                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                    perform_contact(y,x,ih,red,P.normal_mask,P.normal_mask)
+                    
                 end
             end
 
@@ -629,7 +639,8 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
                 r = rand(pos_hk)
                 y = hcw[r]
                 if y.health == SUS
-                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                    perform_contact(y,x,ih,red,P.normal_mask,P.normal_mask)
+                    
                 end
             end
         elseif x.health == PRE
@@ -638,7 +649,8 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
                 r = rand(pos_nurse)
                 y = hcw[r]
                 if y.health == SUS
-                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                    perform_contact(y,x,ih,red,P.normal_mask,P.normal_mask)
+                    
                 end
             end
 
@@ -646,7 +658,8 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
                 r = rand(pos_psw)
                 y = hcw[r]
                 if y.health == SUS
-                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                    perform_contact(y,x,ih,red,P.normal_mask,P.normal_mask)
+                  
                 end
             end
 
@@ -654,7 +667,8 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
                 r = rand(pos_diet)
                 y = hcw[r]
                 if y.health == SUS
-                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                    perform_contact(y,x,ih,red,P.normal_mask,P.normal_mask)
+                    
                 end
             end
 
@@ -662,7 +676,8 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
                 r = rand(pos_hk)
                 y = hcw[r]
                 if y.health == SUS
-                    perform_contact(y,ih,red,P.normal_mask,P.normal_mask)
+                    perform_contact(y,x,ih,red,P.normal_mask,P.normal_mask)
+                   
                 end
             end
         end
@@ -682,27 +697,27 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
                 ih = y.health
                 if y.health == ASYMP
                     red = y.iso ? P.n95 : P.normal_mask
-                    perform_contact(x,ih,P.asymp_red_idx,red,0.0)
+                    perform_contact(x,y,ih,P.asymp_red_idx,red,0.0)
                 elseif y.health == PRE
                     red = y.iso ? P.n95 : P.normal_mask
-                    perform_contact(x,ih,0.0,red,0.0)
+                    perform_contact(x,y,ih,0.0,red,0.0)
 
                 elseif y.health == MILD
                     red = y.iso ? P.n95 : P.normal_mask
-                    perform_contact(x,ih,P.mild_red_idx,red,0.0)
+                    perform_contact(x,y,ih,P.mild_red_idx,red,0.0)
                 elseif y.health == SEV
                     red = y.iso ? P.n95 : P.normal_mask
-                    perform_contact(x,ih,P.sev_red_idx,red,0.0)
+                    perform_contact(x,y,ih,P.sev_red_idx,red,0.0)
                 end
             elseif x.health == ASYMP
                 if y.health == SUS
                     red = y.iso ? P.n95 : P.normal_mask
-                    perform_contact(y,ih,P.asymp_red_idx,red,0.0)
+                    perform_contact(y,x,ih,P.asymp_red_idx,red,0.0)
                 end
             elseif x.health == PRE
                 if y.health == SUS
                     red = y.iso ? P.n95 : P.normal_mask
-                    perform_contact(y,ih,0.0,red,0.0)
+                    perform_contact(y,x,ih,0.0,red,0.0)
                 end
             end
         end
@@ -710,13 +725,15 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
 
 end#close function
 
-function perform_contact(sus_ind,ih,red_idx::Float64,mask_y::Float64,mask_x::Float64)
+function perform_contact(sus_ind,inf_ind,ih,red_idx::Float64,mask_y::Float64,mask_x::Float64)
 
     r = rand()
     if r < P.β*(1-mask_y)*(1-mask_x)*(1-red_idx)
         sus_ind.swap = LAT
         sus_ind.exp = sus_ind.tis   ## force the move to latent in the next time step.
         sus_ind.sickfrom = ih ## stores the infector's status to the infectee's sickfrom
+        sus_ind.infected_by = inf_ind.idx
+        sus_ind.infected_by_type = inf_ind.staff_type
     end
     
 end
@@ -788,7 +805,7 @@ function forcing_contact_res(res::Array{Humans,1},P::ModelParameters)
 
 end
 
-function testing_individuals(h::Array{Humans,1})
+function testing_individuals(h::Array{Humans,1},test_sens)
 
     for i = 1:length(h)
         x = h[i]
@@ -805,12 +822,13 @@ function testing_individuals(h::Array{Humans,1})
                     else
                         r = 0
                     end
-                    if rand() < r*P.test_sens
+                    if rand() < r*test_sens
                         x.tested_when = x.health
                         x.tested = true
                         dist = [0.6;0.2;0.2]
                         a = findfirst(y-> rand() <= y,cumsum(dist))
-                        x.h_t_delay =Int(a)
+                        time_t = x.room_idx < 0 ? Int(a)*P.n_shifts_pd : Int(a)
+                        x.h_t_delay = time_t
                     end
                 else
                     d = Int(floor(x.tis-x.dur[1]-x.dur[3]))
@@ -822,12 +840,13 @@ function testing_individuals(h::Array{Humans,1})
                         r = 0
                     end
                     
-                    if rand() < r*P.test_sens
+                    if rand() < r*test_sens
                         x.tested_when = x.health
                         x.tested = true
                         dist = [0.6;0.2;0.2]
                         a = findfirst(y-> rand() <= y,cumsum(dist))
-                        x.h_t_delay =Int(a)
+                        time_t = x.room_idx < 0 ? Int(a)*P.n_shifts_pd : Int(a)
+                        x.h_t_delay = time_t
                         x.infp = x.dur[3]+x.dur[4]+x.dur[1]-x.tis
                     end
 
@@ -841,12 +860,13 @@ function testing_individuals(h::Array{Humans,1})
                 else
                     r = 0
                 end
-                if rand() < r*P.test_sens
+                if rand() < r*test_sens
                     x.tested_when = x.health
                     x.tested = true
                     dist = [0.6;0.2;0.2]
                     a = findfirst(y-> rand() <= y,cumsum(dist))
-                    x.h_t_delay = Int(a)
+                    time_t = x.room_idx < 0 ? Int(a)*P.n_shifts_pd : Int(a)
+                    x.h_t_delay = time_t
                 end
             elseif x.health == PRE
                 d = Int(floor(x.tis-x.dur[3]))
@@ -858,12 +878,13 @@ function testing_individuals(h::Array{Humans,1})
                     r = 0
                 end
                 
-                if rand() < r*P.test_sens
+                if rand() < r*test_sens
                     x.tested_when = x.health
                     x.tested = true
                     dist = [0.6;0.2;0.2]
                     a = findfirst(y-> rand() <= y,cumsum(dist))
-                    x.h_t_delay = Int(a)
+                    time_t = x.room_idx < 0 ? Int(a)*P.n_shifts_pd : Int(a)
+                    x.h_t_delay = time_t
                     x.infp = x.dur[3]+x.dur[4]-x.tis
                 end
             end
@@ -872,18 +893,39 @@ function testing_individuals(h::Array{Humans,1})
 end
 
 function update_tested(h::Array{Humans,1})
+    lat::Int64 = 0
+    asymp::Int64 = 0
+    pre::Int64 = 0
     for x in h
-        if x.tested && !x.iso_symp
+        if x.tested #&& !x.sub
             x.h_test += 1
             if x.h_test >= x.h_t_delay
                 x.tested = false
                 #x.h_test = -1
                 #println("isolado por teste $(x.idx)")
+                if !x.sub
+                    if x.health == LAT
+                        if x.swap == PRE
+                            pre+=1
+                        elseif x.swap == ASYMP
+                            asymp += 1
+                        else
+                            lat+=1
+                        end
+                    elseif x.health == PRE
+                        pre+=1
+                    elseif x.health == ASYMP
+                        asymp += 1
+                        #println("asymp idx = $(x.idx)")
+                    end
+                end
+
                 iso_ind(x)
-                
+
             end
         end
     end
+    return lat,pre,asymp
 end
 
 
@@ -955,7 +997,8 @@ function create_subs(x::Humans)
     x.swap = UNDEF
     x.sickfrom = UNDEF
     x.wentTo = UNDEF
-    
+    x.infected_by = -1
+    x.infected_by_type = :none
     x.tis   = 0   # time in state 
     x.exp  = 999   # max statetime
     #x.doi::Float64   = 999   # day of infection.
