@@ -8,3 +8,5 @@ if staff will be tested; if residents will be tested; and sensitivity of test fo
 the interval of days between tests. And after how many days of introduction of infection the test starts.
 
 File paper_plots.jl has some pre-programed analysis. one needs to choose beta and the type of building.
+
+oct 27 - changes in probability of detection

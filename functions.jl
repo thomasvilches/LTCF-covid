@@ -47,7 +47,7 @@ end
 
 function sample_epi_durations()
     # when a person is sick, samples the 
-    lat_dist = Distributions.truncated(Gamma(3.122, 2.656),4,11.04) # truncated between 4 and 7
+    lat_dist = LogNormal(1.434,0.661) # truncated between 4 and 7
     pre_dist = Distributions.truncated(Gamma(1.058, 5/2.3), 0.8, 3)#truncated between 0.8 and 3
     asy_dist = Gamma(5, 1)
     inf_dist = Gamma((3.2)^2/3.7, 3.7/3.2)
@@ -249,7 +249,7 @@ function daily_contacts_res(res::Array{Humans,1})
             x.contacts_nurse[i] = 0
             x.contacts_hk[i] = 0
         end
-        n1 = Int(round(rand(dist_rr)/(0.36)))
+        n1 = Int(round(rand(dist_rr)/(0.192)))
         #n2 = Int(round(rand(dist_rh)/(0.63)))
         for i = 1:n1
             r = rand(1:24)
@@ -332,11 +332,15 @@ function daily_contacts_hcw(n_shift::Int64)
                 hmin = (aux-1)*8+1
                 hmax = aux*8
                 
-                r = rand(hmin:hmax)
-                x.contacts_res[r] += 1
-                x.n_contacts += 1
-                x.res_care[x.n_contacts] = y.idx
                 
+                n_cont = rand(1:2)
+                for kk = 1:n_cont
+                    r = rand(hmin:hmax)
+                    x.contacts_res[r] += 1
+                    x.n_contacts += 1
+                    x.res_care[x.n_contacts] = y.idx
+                end
+
                 r = aux_nurse[nurse_idx]
                 x = hcw[r]
                 aux = x.shift
@@ -367,10 +371,13 @@ function daily_contacts_hcw(n_shift::Int64)
                 hmin = (aux-1)*8+1
                 hmax = aux*8
                 
-                r = rand(hmin:hmax)
-                x.contacts_res[r] += 1
-                x.n_contacts += 1
-                x.res_care[x.n_contacts] = y.idx
+                n_cont = rand(1:2)
+                for kk = 1:n_cont
+                    r = rand(hmin:hmax)
+                    x.contacts_res[r] += 1
+                    x.n_contacts += 1
+                    x.res_care[x.n_contacts] = y.idx
+                end
                 
                 r = aux_nurse[nurse_idx]
                 x = hcw[r]
@@ -512,7 +519,7 @@ function daily_contacts_hcw(n_shift::Int64)
         hmin = (aux-1)*8+1
         hmax = aux*8
         
-        n = 2
+        n = 1
         for j = 1:n
             r = rand(1:4)
             if r == 1
@@ -538,7 +545,7 @@ function daily_contacts_hcw(n_shift::Int64)
         hmin = (aux-1)*8+1
         hmax = aux*8
         
-        n = 2
+        n = 1
         for j = 1:n
             r = rand(1:4)
             if r == 1
@@ -650,7 +657,6 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
                 y = hcw[r]
                 if y.health == SUS
                     perform_contact(y,x,ih,red,P.normal_mask,P.normal_mask)
-                    
                 end
             end
 
@@ -805,7 +811,7 @@ function forcing_contact_res(res::Array{Humans,1},P::ModelParameters)
 
 end
 
-function testing_individuals(h::Array{Humans,1},test_sens)
+function testing_individuals(h::Array{Humans,1})
 
     for i = 1:length(h)
         x = h[i]
@@ -814,15 +820,11 @@ function testing_individuals(h::Array{Humans,1},test_sens)
         if !x.iso_symp
             if x.health == LAT
                 if x.swap == ASYMP
-                    d = Int(floor(x.tis-x.dur[1]))
-                    infec = infectivity(d)
-                    if infec[1]<infec[2]
-                        rnd = Distributions.Uniform(infec[1],infec[2])
-                        r = rand(rnd)/2.0
-                    else
-                        r = 0
-                    end
-                    if rand() < r*test_sens
+                    d = Int(floor(x.tis-x.dur[1]-x.dur[3]))
+                    r = infectivity(d)
+                    
+                    #r = 1
+                    if rand() < r
                         x.tested_when = x.health
                         x.tested = true
                         dist = [0.6;0.2;0.2]
@@ -832,15 +834,10 @@ function testing_individuals(h::Array{Humans,1},test_sens)
                     end
                 else
                     d = Int(floor(x.tis-x.dur[1]-x.dur[3]))
-                    infec = infectivity(d)
-                    if infec[1]<infec[2]
-                        rnd = Distributions.Uniform(infec[1],infec[2])
-                        r = rand(rnd)
-                    else
-                        r = 0
-                    end
+                    r = infectivity(d)
                     
-                    if rand() < r*test_sens
+                    #r = 1
+                    if rand() < r
                         x.tested_when = x.health
                         x.tested = true
                         dist = [0.6;0.2;0.2]
@@ -852,15 +849,11 @@ function testing_individuals(h::Array{Humans,1},test_sens)
 
                 end
             elseif  x.health == ASYMP
-                d = Int(floor(x.tis))
-                infec = infectivity(d)
-                if infec[1]<infec[2]
-                    rnd = Distributions.Uniform(infec[1],infec[2])
-                    r = rand(rnd)/2.0
-                else
-                    r = 0
-                end
-                if rand() < r*test_sens
+                d = Int(floor(x.tis-x.dur[3]))
+                r = infectivity(d)
+                
+                #r = 1
+                if rand() < r
                     x.tested_when = x.health
                     x.tested = true
                     dist = [0.6;0.2;0.2]
@@ -870,15 +863,10 @@ function testing_individuals(h::Array{Humans,1},test_sens)
                 end
             elseif x.health == PRE
                 d = Int(floor(x.tis-x.dur[3]))
-                infec = infectivity(d)
-                if infec[1]<infec[2]
-                    rnd = Distributions.Uniform(infec[1],infec[2])
-                    r = rand(rnd)
-                else
-                    r = 0
-                end
+                r = infectivity(d)
                 
-                if rand() < r*test_sens
+                #r = 1
+                if rand() < r
                     x.tested_when = x.health
                     x.tested = true
                     dist = [0.6;0.2;0.2]
@@ -930,7 +918,15 @@ end
 
 
 function infectivity(d::Int64)
-    V = [-10;
+
+    ret::Float64 = 0.0
+
+    V = [-15;
+    -14;
+    -13;
+    -12;
+    -11;
+    -10;
     -9;
     -8;
     -7;
@@ -954,40 +950,141 @@ function infectivity(d::Int64)
     11;
     12;
     13;
-    14
-    ]
-    M =[0	0;
-    0	0;
-    0	0;
-    0	0.02;
-    0	0.03;
-    0	0.09;
-    0	0.22;
-    0.05	0.43;
-    0.13	0.67;
-    0.58	1;
-    0.92	1;
-    0.69	0.95;
-    0.46	0.8;
-    0.29	0.62;
-    0.18	0.49;
-    0.11	0.37;
-    0.06	0.24;
-    0.03	0.12;
-    0.02	0.09;
-    0.01	0.05;
-    0	0.03;
-    0	0;
-    0	0;
-    0	0;
-    0	0]
+    14;
+    15;
+    16;
+    17;
+    18;
+    19;
+    20;
+    21;
+    22;
+    23;
+    24;
+    25;
+    26;
+    27;
+    28;
+    29;
+    30]
 
-    if d >= minimum(V) && d <= maximum(V)
-        a = findfirst(y->y==d,V)
+    if P.test == :saliva
+        M =[0	0;
+        0	0;
+        0	0;
+        0	0;
+        0	0;
+        0	0;
+        2.02300485805437E-176	1.57651072226816E-176;
+        1.58082715758164E-65	1.23192534810669E-65;
+        1.06171851559151E-24	8.2738833631395E-25;
+        1.166703783217E-09	9.09202475035774E-10;
+        0.000411820092812	0.000320927945071;
+        0.046264158993541	0.036053271162276;
+        0.266517454761947	0.207694817652551;
+        0.511656865262432	0.398729904674632;
+        0.652505024940391	0.508491694449865;
+        0.71303692477021	0.555663696405783;
+        0.733625029239347	0.571707833580019;
+        0.735983597155841	0.573545845779915;
+        0.729412028884243	0.56842467773079;
+        0.717667523066282	0.559272282828702;
+        0.702295429725996	0.547292939389074;
+        0.683990920506295	0.533028388843967;
+        0.663129174487086	0.516771005104341;
+        0.639971339520792	0.498724298501772;
+        0.61474681563911	0.479067038557361;
+        0.587687800415901	0.457980174893359;
+        0.559044297639811	0.435658533365887;
+        0.52908994571382	0.412315358087833;
+        0.498122483354122	0.38818267434408;
+        0.466460378395815	0.363508661448057;
+        0.434436451746415	0.33855268394217;
+        0.402389226718035	0.313578550204908;
+        0.370652822483986	0.288846636506324;
+        0.339546312803885	0.264605594351743;
+        0.309363503653575	0.241084384274473;
+        0.280364011549452	0.218485323248762;
+        0.252766348567013	0.196978695902744;
+        0.226743466836645	0.176699282381366;
+        0.202420927097359	0.157744931115667;
+        0.179877579126789	0.140177089076175;
+        0.159148415827452	0.124023025938391;
+        0.140229112025869	0.109279371130894;
+        0.123081690969781	0.095916529689095;
+        0.107640768251773	0.083883548092567;
+        0.093819886492358	0.073113050830453;
+        0.08151755246077	0.063525945079074]
+
+        if d >= minimum(V) && d <= maximum(V)
+            a = findfirst(y->y==d,V)
+            ret = (M[a,2]-M[a,1])*rand()+M[a,1]
+        else
+            a = 1
+            ret = 0.0
+        end
+
     else
-        a = 1
+        M = [0;
+        0;
+        0;
+        0;
+        0;
+        0;
+        2.57615131020228E-176;
+        2.01306978428316E-65;
+        1.35202223272841E-24;
+        1.48571342663165E-09;
+        0.000524423294112;
+        0.058914081858034;
+        0.339390826246998;
+        0.651558249389226;
+        0.830918259153573;
+        0.908001283662765;
+        0.934218755208413;
+        0.937222221959414;
+        0.928853802009476;
+        0.913898017830235;
+        0.89432276162585;
+        0.871013284527364;
+        0.844447350132043;
+        0.814957511463418;
+        0.782835892976787;
+        0.748378181596353;
+        0.711902739181264;
+        0.6737580245736;
+        0.634323186632428;
+        0.594003771260113;
+        0.553223601965308;
+        0.512413763859132;
+        0.47199973369843;
+        0.432387828986899;
+        0.393952190521386;
+        0.357023421279039;
+        0.321879780685359;
+        0.288741510849764;
+        0.257768504350376;
+        0.229061170712738;
+        0.202664070883555;
+        0.178571697065216;
+        0.15673568859279;
+        0.137072783122071;
+        0.119472883393254;
+        0.103806745070432]
+        
+        if d >= minimum(V) && d <= maximum(V)
+            a = findfirst(y->y==d,V)
+            ret = M[a]
+        else
+            a = 1
+            ret = 0.0
+        end
+
+
     end
- return M[a,:]
+
+    
+ return ret
 end
 
 

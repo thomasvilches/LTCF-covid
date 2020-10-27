@@ -16,6 +16,7 @@ using Parameters, Distributions, StatsBase, StaticArrays, Random, Match, DataFra
     hcw_per_shift::Int64 = 16
     staff_per_shift::Int64 = 5
     n_rooms::Int64 = 127
+    test::Symbol = :np
 
     n_shifts_pd::Int64 = 3 #shift_per_day
     n_hours_ps::Int64 = 8 #hours per shift
@@ -189,11 +190,12 @@ function main(P::ModelParameters,sim_idx::Int64)
             end
         end
         #println(t_d)
-        t_in_day = 1
+        global t_in_day = 1
             ##3number of contacts per day residents
         daily_contacts_res(residents)
        
         for n_shift = 1:P.n_shifts_pd #run the 3 shifts
+            println(t_d,n_shift)
             #println("$t_d $n_shift")
             if P.testing_hcw
                 if t_d >= P.start_test
@@ -225,8 +227,8 @@ function main(P::ModelParameters,sim_idx::Int64)
                 sev_hcw_ct[t] += sev_iso
                 rec_hcw_ct[t] += rec_iso
                 dead_hcw_ct[t] += dead_iso
-                t_in_day+=1
-               t += 1
+                global t_in_day+=1
+                global t += 1
             end #end h
             #the 8-th hour is run here. 
             #Must copy everything inside the above loop here
@@ -245,15 +247,17 @@ function main(P::ModelParameters,sim_idx::Int64)
             sev_hcw_ct[t] += sev_iso
             rec_hcw_ct[t] += rec_iso
             dead_hcw_ct[t] += dead_iso
-            t_in_day+=1
-            t += 1
+            global t_in_day+=1
+            global t += 1
             
         end #end n_shift
-        t_testing += 1
+        global t_testing += 1
     end #end t_d
 
     R0=length(findall(x->x.infected_by_type == hcw[first_inf[1]].staff_type,hcw))
     R0+=length(findall(x->x.infected_by_type == hcw[first_inf[1]].staff_type,residents))
 
-    return (lat_res_ct,lat_hcw_ct,pre_res_ct,pre_hcw_ct,asymp_res_ct,asymp_hcw_ct,mild_res_ct,mild_hcw_ct,sev_res_ct,sev_hcw_ct,hosp_res_ct,hosp_hcw_ct,rec_res_ct,rec_hcw_ct,dead_res_ct,dead_hcw_ct,R0,iso_tested_lat,iso_tested_pre,iso_tested_asymp,iso_tested_lat_res,iso_tested_pre_res,iso_tested_asymp_res)
+    #return (lat_res_ct,lat_hcw_ct,pre_res_ct,pre_hcw_ct,asymp_res_ct,asymp_hcw_ct,mild_res_ct,mild_hcw_ct,sev_res_ct,sev_hcw_ct,hosp_res_ct,hosp_hcw_ct,rec_res_ct,rec_hcw_ct,dead_res_ct,dead_hcw_ct,R0,iso_tested_lat,iso_tested_pre,iso_tested_asymp,iso_tested_lat_res,iso_tested_pre_res,iso_tested_asymp_res)
+    return (lat_res_ct,lat_hcw_ct,sum(pre_res_ct),sum(pre_hcw_ct),sum(asymp_res_ct),sum(asymp_hcw_ct),sum(sev_res_ct),sum(sev_hcw_ct),sum(hosp_res_ct),sum(hosp_hcw_ct),sum(dead_res_ct),sum(dead_hcw_ct),R0,iso_tested_lat,iso_tested_pre,iso_tested_asymp,iso_tested_lat_res,iso_tested_pre_res,iso_tested_asymp_res)
+
 end
