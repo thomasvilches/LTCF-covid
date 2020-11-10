@@ -290,7 +290,22 @@ function move_to_hosp(x::Humans,rooms::Array{Rooms,1})
         x.tis = x.exp  
         x.swap = DEAD
     end =#
-
+   #=  if P.iso_strat == :none
+        x.iso = true
+        x.timeiso = 0
+        if x.room_idx < 0
+            if !hcw[x.idx].sub
+                #println("entrou aqui")
+                for k in propertynames(x)
+                    setfield!(hcw_sub[x.idx], k, getfield(x, k))
+                end
+                create_subs(x)
+                #hcw_sub[x.idx].iso_when = hcw_sub[x.idx].health
+            else
+                create_subs(x)
+            end
+        end
+    end =#
 
 
 end
@@ -298,7 +313,8 @@ export move_to_hosp
 
 
 function move_to_dead(x::Humans)
-    # no level of alchemy will bring someone back to life. 
+    # no level of alchemy will bring someone back to life.
+    
     x.health = DEAD
     x.swap = UNDEF
     x.tis = 0 
@@ -309,6 +325,21 @@ function move_to_dead(x::Humans)
         rooms[x.room_idx].n_symp_res -= 1
         #x.iso = false
     end
+
+    #= if P.iso_strat == :none
+        if x.room_idx < 0
+            if !x.sub
+                #println("entrou aqui")
+                for k in propertynames(x)
+                    setfield!(hcw_sub[x.idx], k, getfield(x, k))
+                end
+                create_subs(x)
+                #hcw_sub[x.idx].iso_when = hcw_sub[x.idx].health
+            else
+                create_subs(x)
+            end
+        end
+    end =#
    # h.iso = true # a dead person is isolated
     #_set_isolation(h, true)  # do not set the isovia property here.  
     # isolation property has no effect in contact dynamics anyways (unless x == SUS)
@@ -381,10 +412,20 @@ function iso_ind(x::Humans)
                 create_subs(x)
             end
         end
-        
-    end
-    
-    
+    elseif P.iso_strat == :none
+        if x.room_idx < 0
+            if !x.sub
+                #println("entrou aqui")
+                for k in propertynames(x)
+                    setfield!(hcw_sub[x.idx], k, getfield(x, k))
+                end
+                create_subs(x)
+                #hcw_sub[x.idx].iso_when = hcw_sub[x.idx].health
+            else
+                create_subs(x)
+            end
+        end
+    end 
 end
 function cleaning_rooms(rooms::Array{Rooms,1},pos)
     

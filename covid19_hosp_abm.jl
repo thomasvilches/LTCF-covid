@@ -155,7 +155,7 @@ function main(P::ModelParameters,sim_idx::Int64)
     
 
     t::Int64 = 1
-    t = 1
+    
 
     iso_tested_lat::Int64 = 0
     iso_tested_pre::Int64 = 0
@@ -180,7 +180,7 @@ function main(P::ModelParameters,sim_idx::Int64)
             if t_d >= P.start_test
                 #pos = findall(y->y.shift == n_shift,hcw)
                 if t_testing%P.test_interval == 0
-                    testing_individuals(residents,P.test_sens_res)
+                    testing_individuals(residents)
                 end
                 lat_iso,pre_iso,asymp_iso = update_tested(residents)
                 iso_tested_lat_res+=lat_iso
@@ -190,7 +190,7 @@ function main(P::ModelParameters,sim_idx::Int64)
             end
         end
         #println(t_d)
-        global t_in_day = 1
+        t_in_day = 1
             ##3number of contacts per day residents
         daily_contacts_res(residents)
        
@@ -201,7 +201,7 @@ function main(P::ModelParameters,sim_idx::Int64)
                 if t_d >= P.start_test
                     pos = findall(y->y.shift == n_shift,hcw)
                     if t_testing%P.test_interval == 0
-                        testing_individuals(hcw[pos],P.test_sens_hcw)
+                        testing_individuals(hcw[pos])
                     end
                     lat_iso,pre_iso,asymp_iso = update_tested(hcw)
                     iso_tested_lat+=lat_iso
@@ -227,8 +227,8 @@ function main(P::ModelParameters,sim_idx::Int64)
                 sev_hcw_ct[t] += sev_iso
                 rec_hcw_ct[t] += rec_iso
                 dead_hcw_ct[t] += dead_iso
-                global t_in_day+=1
-                global t += 1
+                t_in_day+=1
+                t += 1
             end #end h
             #the 8-th hour is run here. 
             #Must copy everything inside the above loop here
@@ -247,11 +247,11 @@ function main(P::ModelParameters,sim_idx::Int64)
             sev_hcw_ct[t] += sev_iso
             rec_hcw_ct[t] += rec_iso
             dead_hcw_ct[t] += dead_iso
-            global t_in_day+=1
-            global t += 1
+            t_in_day+=1
+            t += 1
             
         end #end n_shift
-        global t_testing += 1
+        t_testing += 1
     end #end t_d
 
     R0=length(findall(x->x.infected_by_type == hcw[first_inf[1]].staff_type,hcw))
