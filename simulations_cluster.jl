@@ -55,6 +55,9 @@ function dataprocess(results, ip::ModelParameters,NUMOFSIMS::Int64, fileappend="
     resultsIso_lat_res = zeros(Int64, NUMOFSIMS)
     resultsIso_pre_res = zeros(Int64, NUMOFSIMS)
     resultsIso_asymp_res = zeros(Int64, NUMOFSIMS)
+
+    resultsLT_res = zeros(Int64, NUMOFSIMS)
+    resultsLT_hcw = zeros(Int64, NUMOFSIMS)
     for i=1:NUMOFSIMS
         resultsL_res[:,i] = results[i][1]
         resultsL_hcw[:,i] = results[i][2]
@@ -82,11 +85,17 @@ function dataprocess(results, ip::ModelParameters,NUMOFSIMS::Int64, fileappend="
         resultsIso_lat_res[i] = results[i][17]
         resultsIso_pre_res[i] = results[i][18]
         resultsIso_asymp_res[i] = results[i][19]
+
+        resultsLT_res[i] = results[i][20]
+        resultsLT_hcw[i] = results[i][21]
         
     end
         
     writedlm(string("$fileappend", "_latent_res.dat"),  resultsL_res)
     writedlm(string("$fileappend", "_latent_hcw.dat"),  resultsL_hcw)
+    
+    writedlm(string("$fileappend", "_latent_t_res.dat"),  resultsLT_res)
+    writedlm(string("$fileappend", "_latent_t_hcw.dat"),  resultsLT_hcw)
    
     writedlm(string("$fileappend", "_pre_res.dat"),  resultsP_res)
     writedlm(string("$fileappend", "_pre_hcw.dat"),  resultsP_hcw)
@@ -137,114 +146,65 @@ function runsim(simnum, ip::ModelParameters,end_file::String)
 
 end
 
- 
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0,normal_mask = 0.0,n95 = 0.0) #new0.25 old 0.197
-runsim(8000,ip,"S0")
 
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0) #new0.25 old 0.197
-runsim(8000,ip,"S1")
- 
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 2) #new0.25 old 0.197
-runsim(8000,ip,"S2") 
+function run_all_scen(beta,tr1=[1;2;3],build=:new)
 
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:np,test_interval = 14) #new0.25 old 0.197
-runsim(8000,ip,"S3a")
+    @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0,normal_mask = 0.0,n95 = 0.0,time_to_result = $tr) #new0.25 old 0.197
+    runsim(8000,ip,"S0")
+    
+    @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0,time_to_result = $tr) #new0.25 old 0.197
+    runsim(8000,ip,"S1")
+     
+    @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 2,time_to_result = $tr) #new0.25 old 0.197
+    runsim(8000,ip,"S2") 
+    
+    for tr in tr1
+        @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:np,test_interval = 14,time_to_result = $tr) #new0.25 old 0.197
+        runsim(8000,ip,"S3a-$(ip.time_to_result)")
+        
+        @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:saliva,test_interval = 14,time_to_result = $tr) #new0.25 old 0.197
+        runsim(8000,ip,"S3b-$(ip.time_to_result)")
+        
+        @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:np,test_interval = 7,time_to_result = $tr) #new0.25 old 0.197
+        runsim(8000,ip,"S3c-$(ip.time_to_result)")
+        
+        @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:saliva,test_interval = 7,time_to_result = $tr) #new0.25 old 0.197
+        runsim(8000,ip,"S3d-$(ip.time_to_result)")
+        
+        @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:np,test_interval = 5, start_test = 5,time_to_result = $tr) #new0.25 old 0.197
+        runsim(8000,ip,"S3e-$(ip.time_to_result)")
+        
+        @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:saliva,test_interval = 5, start_test = 5,time_to_result = $tr) #new0.25 old 0.197
+        runsim(8000,ip,"S3f-$(ip.time_to_result)")
+        
+        @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 14,time_to_result = $tr) #new0.25 old 0.197
+        runsim(8000,ip,"S4a-$(ip.time_to_result)")
+        
+        @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 14,time_to_result = $tr) #new0.25 old 0.197
+        runsim(8000,ip,"S4b-$(ip.time_to_result)")
+        
+        @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 7,time_to_result = $tr) #new0.25 old 0.197
+        runsim(8000,ip,"S4c-$(ip.time_to_result)")
+        
+        @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 7,time_to_result = $tr) #new0.25 old 0.197
+        runsim(8000,ip,"S4d-$(ip.time_to_result)")
+        
+        @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 5, start_test = 5,time_to_result = $tr) #new0.25 old 0.197
+        runsim(8000,ip,"S4e-$(ip.time_to_result)")
+        
+        @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 5, start_test = 5,time_to_result = $tr) #new0.25 old 0.197
+        runsim(8000,ip,"S4f-$(ip.time_to_result)")
 
+    end
+end 
 
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:np,test_interval = 7) #new0.25 old 0.197
-runsim(8000,ip,"S3b")
-
-
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:np,test_interval = 5, start_test = 5) #new0.25 old 0.197
-runsim(8000,ip,"S3c")
-
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:saliva,test_interval = 14) #new0.25 old 0.197
-runsim(8000,ip,"S3d")
-
-
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:saliva,test_interval = 7) #new0.25 old 0.197
-runsim(8000,ip,"S3e")
-
-
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:saliva,test_interval = 5, start_test = 5) #new0.25 old 0.197
-runsim(8000,ip,"S3f")
-
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 14) #new0.25 old 0.197
-runsim(8000,ip,"S4a")
-
-
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 7) #new0.25 old 0.197
-runsim(8000,ip,"S4b")
-
-
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 5, start_test = 5) #new0.25 old 0.197
-runsim(8000,ip,"S4c")
-
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 14) #new0.25 old 0.197
-runsim(8000,ip,"S4d")
-
-
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 7) #new0.25 old 0.197
-runsim(8000,ip,"S4e")
-
-
-@everywhere ip = ModelParameters(β = 0.0545, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 5, start_test = 5) #new0.25 old 0.197
-runsim(8000,ip,"S4f")
+function run_calibration(beta,tr=1,build=:new)
+    
+    @everywhere ip = ModelParameters(β = $beta, type_h = $build, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0,time_to_result = $tr) #new0.25 old 0.197
+    runsim(8000,ip,"S1")
+     
+end
 ##################################################################33
 ############# old
 ###################################3
 
-
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0,normal_mask = 0.0,n95 = 0.0) #new0.25 old 0.197
-runsim(8000,ip,"S0")
-
-
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0) #new0.25 old 0.197
-runsim(8000,ip,"S1")
- 
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 2) #new0.25 old 0.197
-runsim(8000,ip,"S2")
-
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:np,test_interval = 14) #new0.25 old 0.197
-runsim(8000,ip,"S3a")
-
-
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:np,test_interval = 7) #new0.25 old 0.197
-runsim(8000,ip,"S3b")
-
-
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:np,test_interval = 5, start_test = 5) #new0.25 old 0.197
-runsim(8000,ip,"S3c")
-
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:saliva,test_interval = 14) #new0.25 old 0.197
-runsim(8000,ip,"S3d")
-
-
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:saliva,test_interval = 7) #new0.25 old 0.197
-runsim(8000,ip,"S3e")
-
-
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test=:saliva,test_interval = 5, start_test = 5) #new0.25 old 0.197
-runsim(8000,ip,"S3f")
-
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 14) #new0.25 old 0.197
-runsim(8000,ip,"S4a")
-
-
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 7) #new0.25 old 0.197
-runsim(8000,ip,"S4b")
-
-
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 5, start_test = 5) #new0.25 old 0.197
-runsim(8000,ip,"S4c")
-
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 14) #new0.25 old 0.197
-runsim(8000,ip,"S4d")
-
-
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 7) #new0.25 old 0.197
-runsim(8000,ip,"S4e")
-
-
-@everywhere ip = ModelParameters(β = 0.0536, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 5, start_test = 5) #new0.25 old 0.197
-runsim(8000,ip,"S4f")

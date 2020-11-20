@@ -54,7 +54,7 @@ function sample_epi_durations()
 
     latents = Int.(round.(rand(lat_dist)))
     pres = Int.(round.(rand(pre_dist)))
-    latents = latents-pres#max(0,(latents - pres)) # ofcourse substract from latents, the presymp periods
+    latents = latents-pres #max(0,(latents - pres)) # ofcourse substract from latents, the presymp periods
     asymps = Int.(ceil.(rand(asy_dist)))
     infs = Int.(ceil.(rand(inf_dist)))
     return (latents, asymps, pres, infs)
@@ -827,8 +827,8 @@ function testing_individuals(h::Array{Humans,1})
                     if rand() < r
                         x.tested_when = x.health
                         x.tested = true
-                        dist = [0.6;0.2;0.2]
-                        a = findfirst(y-> rand() <= y,cumsum(dist))
+                        #dist = [0.6;0.2;0.2]
+                        a = P.time_to_result#findfirst(y-> rand() <= y,cumsum(dist))
                         time_t = x.room_idx < 0 ? Int(a)*P.n_shifts_pd : Int(a)
                         x.h_t_delay = time_t
                     end
@@ -840,8 +840,8 @@ function testing_individuals(h::Array{Humans,1})
                     if rand() < r
                         x.tested_when = x.health
                         x.tested = true
-                        dist = [0.6;0.2;0.2]
-                        a = findfirst(y-> rand() <= y,cumsum(dist))
+                        #dist = [0.6;0.2;0.2]
+                        a = P.time_to_result#findfirst(y-> rand() <= y,cumsum(dist))
                         time_t = x.room_idx < 0 ? Int(a)*P.n_shifts_pd : Int(a)
                         x.h_t_delay = time_t
                         x.infp = x.dur[3]+x.dur[4]+x.dur[1]-x.tis
@@ -856,8 +856,8 @@ function testing_individuals(h::Array{Humans,1})
                 if rand() < r
                     x.tested_when = x.health
                     x.tested = true
-                    dist = [0.6;0.2;0.2]
-                    a = findfirst(y-> rand() <= y,cumsum(dist))
+                    #dist = [0.6;0.2;0.2]
+                    a = P.time_to_result#findfirst(y-> rand() <= y,cumsum(dist))
                     time_t = x.room_idx < 0 ? Int(a)*P.n_shifts_pd : Int(a)
                     x.h_t_delay = time_t
                 end
@@ -869,8 +869,9 @@ function testing_individuals(h::Array{Humans,1})
                 if rand() < r
                     x.tested_when = x.health
                     x.tested = true
-                    dist = [0.6;0.2;0.2]
-                    a = findfirst(y-> rand() <= y,cumsum(dist))
+                    #dist = [0.6;0.2;0.2]
+                    a = P.time_to_result#findfirst(y-> rand() <= y,cumsum(dist))
+
                     time_t = x.room_idx < 0 ? Int(a)*P.n_shifts_pd : Int(a)
                     x.h_t_delay = time_t
                     x.infp = x.dur[3]+x.dur[4]-x.tis
@@ -1054,4 +1055,17 @@ function create_subs(x::Humans)
     iso_when = UNDEF
     tested_when = UNDEF
    
+end
+
+function inserting_infections()
+
+    pos = findall(k->k.health == SUS,hcw)
+
+    for i in pos
+        x = hcw[i]
+        if rand() < P.current_prev
+            move_to_latent(x)
+        end
+    end
+
 end

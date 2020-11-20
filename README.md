@@ -10,3 +10,5 @@ the interval of days between tests. And after how many days of introduction of i
 File paper_plots.jl has some pre-programed analysis. one needs to choose beta and the type of building.
 
 oct 27 - changes in probability of detection
+
+Nov 20 - added a probability of HCW getting latent based on the current prevalence of cases in Canada (~0.0014). Also, the results of the test is released after a fixed period that will be changed in order to check its influence in the system.

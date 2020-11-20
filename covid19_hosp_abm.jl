@@ -17,6 +17,9 @@ using Parameters, Distributions, StatsBase, StaticArrays, Random, Match, DataFra
     staff_per_shift::Int64 = 5
     n_rooms::Int64 = 127
     test::Symbol = :np
+    time_to_result::Int64 = 1
+
+    current_prev::Float64 = 0.0014
 
     n_shifts_pd::Int64 = 3 #shift_per_day
     n_hours_ps::Int64 = 8 #hours per shift
@@ -176,6 +179,8 @@ function main(P::ModelParameters,sim_idx::Int64)
     #initiates the dynamics
     for t_d = 1:P.modeltime ##run days
         
+        inserting_infections()
+
         if P.testing_res
             if t_d >= P.start_test
                 #pos = findall(y->y.shift == n_shift,hcw)
@@ -258,6 +263,6 @@ function main(P::ModelParameters,sim_idx::Int64)
     R0+=length(findall(x->x.infected_by_type == hcw[first_inf[1]].staff_type,residents))
 
     #return (lat_res_ct,lat_hcw_ct,pre_res_ct,pre_hcw_ct,asymp_res_ct,asymp_hcw_ct,mild_res_ct,mild_hcw_ct,sev_res_ct,sev_hcw_ct,hosp_res_ct,hosp_hcw_ct,rec_res_ct,rec_hcw_ct,dead_res_ct,dead_hcw_ct,R0,iso_tested_lat,iso_tested_pre,iso_tested_asymp,iso_tested_lat_res,iso_tested_pre_res,iso_tested_asymp_res)
-    return (lat_res_ct,lat_hcw_ct,sum(pre_res_ct),sum(pre_hcw_ct),sum(asymp_res_ct),sum(asymp_hcw_ct),sum(sev_res_ct),sum(sev_hcw_ct),sum(hosp_res_ct),sum(hosp_hcw_ct),sum(dead_res_ct),sum(dead_hcw_ct),R0,iso_tested_lat,iso_tested_pre,iso_tested_asymp,iso_tested_lat_res,iso_tested_pre_res,iso_tested_asymp_res)
+    return (lat_res_ct,lat_hcw_ct,sum(pre_res_ct),sum(pre_hcw_ct),sum(asymp_res_ct),sum(asymp_hcw_ct),sum(sev_res_ct),sum(sev_hcw_ct),sum(hosp_res_ct),sum(hosp_hcw_ct),sum(dead_res_ct),sum(dead_hcw_ct),R0,iso_tested_lat,iso_tested_pre,iso_tested_asymp,iso_tested_lat_res,iso_tested_pre_res,iso_tested_asymp_res,sum(lat_res_ct),sum(lat_hcw_ct))
 
 end
