@@ -1065,6 +1065,7 @@ function inserting_infections()
         x = hcw[i]
         if rand() < P.current_prev
             move_to_latent(x)
+            x.outside_inf = true
         end
     end
 

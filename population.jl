@@ -43,6 +43,7 @@ Base.@kwdef mutable struct Humans
     res_care::Array{Int64,1} = repeat([0],70)
     n_contacts::Int64 = 0
     contacts_done::Int64 = 0
+    outside_inf::Bool = false
 
 end
 

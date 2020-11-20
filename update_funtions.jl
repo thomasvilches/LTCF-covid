@@ -52,14 +52,14 @@ function time_update(group,rooms,P)
 
         if x.tis >= x.exp             
             @match Symbol(x.swap) begin
-                :LAT  => begin move_to_latent(x); lat += 1; end
-                :PRE  => begin move_to_pre(x); pre += 1; end
-                :ASYMP => begin move_to_asymp(x); asymp += 1; end
-                :MILD => begin move_to_mild(x,rooms); mild += 1; end
-                :SEV  => begin move_to_sev(x,rooms); sev +=1; end  
-                :HOSP  => begin move_to_hosp(x,rooms); hosp +=1; end    
-                :REC  => begin move_to_recovered(x); rec += 1; end
-                :DEAD  => begin move_to_dead(x); dead += 1; end
+                :LAT  => begin move_to_latent(x); lat += x.outside_inf ? 0 : 1; end
+                :PRE  => begin move_to_pre(x); pre += x.outside_inf ? 0 : 1; end
+                :ASYMP => begin move_to_asymp(x); asymp += x.outside_inf ? 0 : 1; end
+                :MILD => begin move_to_mild(x,rooms); mild += x.outside_inf ? 0 : 1; end
+                :SEV  => begin move_to_sev(x,rooms); sev += x.outside_inf ? 0 : 1; end  
+                :HOSP  => begin move_to_hosp(x,rooms); hosp += x.outside_inf ? 0 : 1; end    
+                :REC  => begin move_to_recovered(x); rec += x.outside_inf ? 0 : 1; end
+                :DEAD  => begin move_to_dead(x); dead += x.outside_inf ? 0 : 1; end
                 _    => error("swap expired, but no swap set. $x")
             end
 

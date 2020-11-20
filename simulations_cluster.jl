@@ -149,13 +149,13 @@ end
 
 function run_all_scen(beta,tr1=[1;2;3],build=:new)
 
-    @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0,normal_mask = 0.0,n95 = 0.0,time_to_result = $tr) #new0.25 old 0.197
+    @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0,normal_mask = 0.0,n95 = 0.0) #new0.25 old 0.197
     runsim(8000,ip,"S0")
     
-    @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0,time_to_result = $tr) #new0.25 old 0.197
+    @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0) #new0.25 old 0.197
     runsim(8000,ip,"S1")
      
-    @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 2,time_to_result = $tr) #new0.25 old 0.197
+    @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 2) #new0.25 old 0.197
     runsim(8000,ip,"S2") 
     
     for tr in tr1
