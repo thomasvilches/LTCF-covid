@@ -16,7 +16,7 @@ end
 function create_folder(ip::ModelParameters,end_file::String)
     #test = (ip.testing_res && ip.testing_hcw) ? "test_$(ip.test_interval)" : "not_testing"
     #RF = string("results_$(ip.type_h)_$(ip.iso_strat)_$(test)_$(ip.fixed_res)") ## 
-    RF = string("results_$(ip.type_h)_$(ip.iso_strat)_$end_file")
+    RF = string("/data/thomas-covid/LTCF/results_$(ip.type_h)_$(ip.iso_strat)_$end_file")
     if !Base.Filesystem.isdir(RF)
         Base.Filesystem.mkpath(RF)
     end
@@ -27,7 +27,7 @@ function dataprocess(results, ip::ModelParameters,NUMOFSIMS::Int64, fileappend="
     ## takes the results of the pmap and stores it to file. 
     
     ## create empty vectors to store the results
-    sim_time = ip.n_shifts_pd*P.n_hours_ps*P.modeltime
+    sim_time = ip.n_shifts_pd*ip.n_hours_ps*ip.modeltime
     resultsL_res = zeros(Int64, sim_time, NUMOFSIMS)
     resultsL_hcw = zeros(Int64, sim_time, NUMOFSIMS)
 
@@ -50,9 +50,12 @@ function dataprocess(results, ip::ModelParameters,NUMOFSIMS::Int64, fileappend="
     resultsIso_lat = zeros(Int64, NUMOFSIMS)
     resultsIso_pre = zeros(Int64, NUMOFSIMS)
     resultsIso_asymp = zeros(Int64, NUMOFSIMS)
-    resultsIso_lat_res = zeros(Int64, NUMOFSIMS)
-    resultsIso_pre_res = zeros(Int64, NUMOFSIMS)
-    resultsIso_asymp_res = zeros(Int64, NUMOFSIMS)
+    total_lat = zeros(Int64, NUMOFSIMS)
+    total_pre = zeros(Int64, NUMOFSIMS)
+    total_asymp = zeros(Int64, NUMOFSIMS)
+
+    resultsLT_res = zeros(Int64, NUMOFSIMS)
+    resultsLT_hcw = zeros(Int64, NUMOFSIMS)
     for i=1:NUMOFSIMS
         resultsL_res[:,i] = results[i][1]
         resultsL_hcw[:,i] = results[i][2]
@@ -77,14 +80,20 @@ function dataprocess(results, ip::ModelParameters,NUMOFSIMS::Int64, fileappend="
         resultsIso_pre[i] = results[i][15]
         resultsIso_asymp[i] = results[i][16]
 
-        resultsIso_lat_res[i] = results[i][17]
-        resultsIso_pre_res[i] = results[i][18]
-        resultsIso_asymp_res[i] = results[i][19]
+        total_lat[i] = results[i][17]
+        total_pre[i] = results[i][18]
+        total_asymp[i] = results[i][19]
+
+        resultsLT_res[i] = results[i][20]
+        resultsLT_hcw[i] = results[i][21]
         
     end
         
     writedlm(string("$fileappend", "_latent_res.dat"),  resultsL_res)
     writedlm(string("$fileappend", "_latent_hcw.dat"),  resultsL_hcw)
+    
+    writedlm(string("$fileappend", "_latent_t_res.dat"),  resultsLT_res)
+    writedlm(string("$fileappend", "_latent_t_hcw.dat"),  resultsLT_hcw)
    
     writedlm(string("$fileappend", "_pre_res.dat"),  resultsP_res)
     writedlm(string("$fileappend", "_pre_hcw.dat"),  resultsP_hcw)
@@ -113,9 +122,9 @@ function dataprocess(results, ip::ModelParameters,NUMOFSIMS::Int64, fileappend="
     writedlm(string("$fileappend", "_iso_lat.dat"),  resultsIso_lat)
     writedlm(string("$fileappend", "_iso_pre.dat"),  resultsIso_pre)
 
-    writedlm(string("$fileappend", "_iso_asymp_res.dat"),  resultsIso_asymp_res)
-    writedlm(string("$fileappend", "_iso_lat_res.dat"),  resultsIso_lat_res)
-    writedlm(string("$fileappend", "_iso_pre_res.dat"),  resultsIso_pre_res)
+    writedlm(string("$fileappend", "_total_asymp.dat"),  total_asymp)
+    writedlm(string("$fileappend", "_total_lat.dat"),  total_lat)
+    writedlm(string("$fileappend", "_total_pre.dat"),  total_pre)
    
 end
 
@@ -136,103 +145,41 @@ function runsim(simnum, ip::ModelParameters,end_file::String)
 end
 
 
-@everywhere ip = ModelParameters(β = 0.06, type_h = :new, iso_strat = :none,testing_hcw = false,testing_res=false,fixed_res = 0,normal_mask = 0.0,n95 = 0.0) #new0.25 old 0.197
-runsim(8000,ip,"S0")
+function run_all_scen(beta,tr1=[1;2],vac = false)
+
+    #@everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0,normal_mask = 0.0,n95 = 0.0,vaccinating = $vac) #new0.25 old 0.197
+    #runsim(4000,ip,"S0")
+    
+    #@everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0,vaccinating = $vac) #new0.25 old 0.197
+    #runsim(4000,ip,"S1")
+     
+    @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 2,vaccinating = false,modeltime=500) #new0.25 old 0.197
+    runsim(4000,ip,"S1") 
+    
+    for tr in tr1
+        @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 7,time_to_result = $tr,vaccinating = false,modeltime=500) #new0.25 old 0.197
+        runsim(4000,ip,"S2a-$(ip.time_to_result)")
+        
+        @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 7,time_to_result = $tr,vaccinating = false,modeltime=500) #new0.25 old 0.197
+        runsim(4000,ip,"S2b-$(ip.time_to_result)")
+        
+        @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 7,time_to_result = $tr,vaccinating = true,modeltime=500) #new0.25 old 0.197
+        runsim(4000,ip,"S4a-$(ip.time_to_result)")
+        
+        @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 7,time_to_result = $tr,vaccinating = true,modeltime=500) #new0.25 old 0.197
+        runsim(4000,ip,"S4b-$(ip.time_to_result)")
+
+    end
 
 
-@everywhere ip = ModelParameters(β = 0.06, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0) #new0.25 old 0.197
-runsim(8000,ip,"S1")
- 
-@everywhere ip = ModelParameters(β = 0.06, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 2) #new0.25 old 0.197
-runsim(8000,ip,"S2")
+    @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 2,vaccinating = true,modeltime=500) #new0.25 old 0.197
+    runsim(4000,ip,"S3")
 
-@everywhere ip = ModelParameters(β = 0.06, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test_interval = 14) #new0.25 old 0.197
-runsim(8000,ip,"S3a")
+end 
 
-
-@everywhere ip = ModelParameters(β = 0.06, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test_interval = 7) #new0.25 old 0.197
-runsim(8000,ip,"S3b")
-
-
-@everywhere ip = ModelParameters(β = 0.06, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test_interval = 7,start_test=7,test_sens_hcw = 0.85) #new0.25 old 0.197
-runsim(8000,ip,"S4a")
-
-
-@everywhere ip = ModelParameters(β = 0.06, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test_interval = 3,start_test=3,test_sens_hcw = 0.85) #new0.25 old 0.197
-runsim(8000,ip,"S4b")
-
-@everywhere ip = ModelParameters(β = 0.06, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=true,fixed_res = 0,test_interval = 7,start_test=7,test_sens_hcw = 0.85,test_sens_res = 0.85) #new0.25 old 0.197
-runsim(8000,ip,"S5a")
-
-
-@everywhere ip = ModelParameters(β = 0.06, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=true,fixed_res = 0,test_interval = 3,start_test=3,test_sens_hcw = 0.85,test_sens_res = 0.85) #new0.25 old 0.197
-runsim(8000,ip,"S5b")
-
-
-@everywhere ip = ModelParameters(β = 0.06, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test_interval = 14) #new0.25 old 0.197
-runsim(8000,ip,"S6a")
-
-
-@everywhere ip = ModelParameters(β = 0.06, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test_interval = 7) #new0.25 old 0.197
-runsim(8000,ip,"S6b")
-
-
-
-@everywhere ip = ModelParameters(β = 0.06, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test_interval = 7,start_test=7,test_sens_hcw = 0.85) #new0.25 old 0.197
-runsim(8000,ip,"S7a")
-
-
-@everywhere ip = ModelParameters(β = 0.06, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test_interval = 3,start_test=3,test_sens_hcw = 0.85) #new0.25 old 0.197
-runsim(8000,ip,"S7b")
-
-
-
-@everywhere ip = ModelParameters(β = 0.0582, type_h = :old, iso_strat = :none,testing_hcw = false,testing_res=false,fixed_res = 0,normal_mask = 0.0,n95 = 0.0) #new0.25 old 0.197
-runsim(8000,ip,"S0")
-
-@everywhere ip = ModelParameters(β = 0.0582, type_h = :old, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0) #new0.25 old 0.197
-runsim(8000,ip,"S1")
-
- 
-@everywhere ip = ModelParameters(β = 0.0582, type_h = :old, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 2) #new0.25 old 0.197
-runsim(8000,ip,"S2")
-
-
-@everywhere ip = ModelParameters(β = 0.0582, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test_interval = 14) #new0.25 old 0.197
-runsim(8000,ip,"S3a")
-
-
-@everywhere ip = ModelParameters(β = 0.0582, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test_interval = 7) #new0.25 old 0.197
-runsim(8000,ip,"S3b")
-
-
-@everywhere ip = ModelParameters(β = 0.0582, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test_interval = 7,start_test=7,test_sens_hcw = 0.85) #new0.25 old 0.197
-runsim(8000,ip,"S4a")
-
-
-@everywhere ip = ModelParameters(β = 0.0582, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 0,test_interval = 3,start_test=3,test_sens_hcw = 0.85) #new0.25 old 0.197
-runsim(8000,ip,"S4b")
-
-@everywhere ip = ModelParameters(β = 0.0582, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=true,fixed_res = 0,test_interval = 7,start_test=7,test_sens_hcw = 0.85,test_sens_res = 0.85) #new0.25 old 0.197
-runsim(8000,ip,"S5a")
-
-
-@everywhere ip = ModelParameters(β = 0.0582, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=true,fixed_res = 0,test_interval = 3,start_test=3,test_sens_hcw = 0.85,test_sens_res = 0.85) #new0.25 old 0.197
-runsim(8000,ip,"S5b")
-
-
-@everywhere ip = ModelParameters(β = 0.0582, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test_interval = 14) #new0.25 old 0.197
-runsim(8000,ip,"S6a")
-
-
-@everywhere ip = ModelParameters(β = 0.0582, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test_interval = 7) #new0.25 old 0.197
-runsim(8000,ip,"S6b")
-
-
-
-@everywhere ip = ModelParameters(β = 0.0582, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test_interval = 7,start_test=7,test_sens_hcw = 0.85) #new0.25 old 0.197
-runsim(8000,ip,"S7a")
-
-
-@everywhere ip = ModelParameters(β = 0.0582, type_h = :old, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test_interval = 3,start_test=3,test_sens_hcw = 0.85) #new0.25 old 0.197
-runsim(8000,ip,"S7b")
+function run_calibration(beta)
+    
+    @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0,modeltime = 120) #new0.25 old 0.197
+    runsim(4000,ip,"S0")
+     
+end

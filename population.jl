@@ -45,6 +45,9 @@ Base.@kwdef mutable struct Humans
     contacts_done::Int64 = 0
     outside_inf::Bool = false
 
+    vac_ef::Float64 = 0.0
+    vac_status::Int64 = 0
+
 end
 
 Base.@kwdef mutable struct Rooms

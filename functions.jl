@@ -67,7 +67,7 @@ function initializing_resident(x,idx::Int64,ri::Int64)
     x.swap = UNDEF
     x.ag  = 5
 
-    age_thres = [39;64;74;84;94;100]
+    age_thres = [49;64;74;84;94;100]
     v = [0.0;6.6;11.4;27.3;43.9;10.8]
 
     v = v/sum(v)
@@ -436,10 +436,13 @@ function daily_contacts_hcw(n_shift::Int64)
                 hmin = (aux-1)*8+1
                 hmax = aux*8
                 
-                r = rand(hmin:hmax)
-                x.contacts_res[r] += 1
-                x.n_contacts += 1
-                x.res_care[x.n_contacts] = y.idx
+                n_cont = rand(1:2)
+                for kk = 1:n_cont
+                    r = rand(hmin:hmax)
+                    x.contacts_res[r] += 1
+                    x.n_contacts += 1
+                    x.res_care[x.n_contacts] = y.idx
+                end
                 
                 r = aux_nurse[nurse_idx]
                 x = hcw[r]
@@ -519,7 +522,7 @@ function daily_contacts_hcw(n_shift::Int64)
         hmin = (aux-1)*8+1
         hmax = aux*8
         
-        n = 1
+        n = rand(1:2)
         for j = 1:n
             r = rand(1:4)
             if r == 1
@@ -545,7 +548,7 @@ function daily_contacts_hcw(n_shift::Int64)
         hmin = (aux-1)*8+1
         hmax = aux*8
         
-        n = 1
+        n = rand(1:2)
         for j = 1:n
             r = rand(1:4)
             if r == 1
@@ -734,7 +737,7 @@ end#close function
 function perform_contact(sus_ind,inf_ind,ih,red_idx::Float64,mask_y::Float64,mask_x::Float64)
 
     r = rand()
-    if r < P.β*(1-mask_y)*(1-mask_x)*(1-red_idx)
+    if r < P.β*(1-mask_y)*(1-mask_x)*(1-red_idx)*(1-sus_ind.vac_ef)
         sus_ind.swap = LAT
         sus_ind.exp = sus_ind.tis   ## force the move to latent in the next time step.
         sus_ind.sickfrom = ih ## stores the infector's status to the infectee's sickfrom
@@ -1054,19 +1057,75 @@ function create_subs(x::Humans)
     h_t_delay = -1
     iso_when = UNDEF
     tested_when = UNDEF
+
+    if P.vaccinating && rand() < P.vac_cov_hcw
+        x.vac_ef = 0.9
+        x.vac_status = 2
+    else
+        x.vac_ef = 0.0
+        x.vac_status = 0
+    end
    
 end
 
-function inserting_infections()
+function inserting_infections(rnd::Float64)
 
     pos = findall(k->k.health == SUS,hcw)
 
     for i in pos
         x = hcw[i]
-        if rand() < P.current_prev
+        if rand() < rnd
             move_to_latent(x)
             x.outside_inf = true
         end
+    end
+
+end
+
+function vaccination_dose_1()
+    
+    l = length(hcw)
+    n = Int(round(P.vac_cov_hcw*l))
+    pos = sample(1:l,n,replace=false)
+
+    for i in pos
+        x = hcw[i]
+
+        x.vac_ef = 0.45
+        x.vac_status = 1
+    end
+
+    l = length(residents)
+    n = Int(round(P.vac_cov_res*l))
+    pos = sample(1:l,n,replace=false)
+
+    for i in pos
+        x = residents[i]
+        red = (P.efficacy_red_max-P.efficacy_red_min)*rand()+P.efficacy_red_min
+        x.vac_ef = 0.45*(1-red)
+        x.vac_status = 1
+    end
+
+end
+
+
+function vaccination_dose_2()
+    
+    pos = findall(k->k.vac_status == 1,hcw)
+
+    for i in pos
+        x = hcw[i]
+        x.vac_ef = 0.9
+        x.vac_status = 2
+    end
+
+    pos = findall(k->k.vac_status == 1,residents)
+
+    for i in pos
+        x = residents[i]
+        red = (P.efficacy_red_max-P.efficacy_red_min)*rand()+P.efficacy_red_min
+        x.vac_ef = 0.9*(1-red)
+        x.vac_status = 2
     end
 
 end

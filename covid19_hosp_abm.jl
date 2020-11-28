@@ -5,7 +5,7 @@ using Parameters, Distributions, StatsBase, StaticArrays, Random, Match, DataFra
     β = 0.7       
     prov::Symbol = :ontario 
     calibration::Bool = false 
-    modeltime::Int64 = 300
+    modeltime::Int64 = 500
     initialinf::Int64 = 1
     fsevere::Float64 = 0.0 # fixed at 0.80
     fasymp::Float64 = 0.50 ## NOT USED ANYMORE ## percent going to asymp (may 10, removed all tests and references)
@@ -19,7 +19,7 @@ using Parameters, Distributions, StatsBase, StaticArrays, Random, Match, DataFra
     test::Symbol = :np
     time_to_result::Int64 = 1
 
-    current_prev::Float64 = 0.0014
+    #current_prev::Float64 = 0.0015
 
     n_shifts_pd::Int64 = 3 #shift_per_day
     n_hours_ps::Int64 = 8 #hours per shift
@@ -52,6 +52,24 @@ using Parameters, Distributions, StatsBase, StaticArrays, Random, Match, DataFra
 
     #sub_hcw::Bool = false
     fixed_res::Int64 = 0
+
+    vaccinating::Bool = false
+
+    vac_cov_res::Float64 = 0.75
+    vac_cov_hcw::Float64 = 0.9
+
+    efficacy_red_min::Float64 = 0.1
+    efficacy_red_max::Float64 = 0.5
+
+    day_second_dose::Int64 = 14
+    delay_immu::Int64 = 7
+
+    prop_sev_res::Float64 = 0.8
+
+    coming_inf::Bool = true
+    prev_min::Float64 = 0.0005
+    prev_max::Float64 = 0.001
+
 end
 
 Base.@kwdef mutable struct ct_data_collect
@@ -112,7 +130,7 @@ function main(P::ModelParameters,sim_idx::Int64)
             initializing_resident(residents[i],i,ri)
         end
     end
-  
+    
     
     hcw_per_shift,dist_PSW,dist_nurse,dist_HK,dist_diet = shift_numbers(P.type_h)
     
@@ -123,6 +141,10 @@ function main(P::ModelParameters,sim_idx::Int64)
       #=   for x in propertynames(hcw[i])
             setfield!(hcw_sub[i], x, getfield(hcw[i], x))
         end =#
+    end
+
+    if P.vaccinating
+         vaccination_dose_1() 
     end
 
     first_inf = insert_infected(LAT, 1,hcw,rooms)
@@ -164,6 +186,10 @@ function main(P::ModelParameters,sim_idx::Int64)
     iso_tested_pre::Int64 = 0
     iso_tested_asymp::Int64 = 0
 
+    total_lat::Int64 = 0
+    total_pre::Int64 = 0
+    total_asymp::Int64 = 0
+
     iso_tested_lat_res::Int64 = 0
     iso_tested_pre_res::Int64 = 0
     iso_tested_asymp_res::Int64 = 0
@@ -177,9 +203,18 @@ function main(P::ModelParameters,sim_idx::Int64)
     #t_testing = 0
     t_in_day::Int64 = 1
     #initiates the dynamics
+    rnd::Float64 = (P.prev_max-P.prev_min)*rand()+P.prev_min
     for t_d = 1:P.modeltime ##run days
-        
-        inserting_infections()
+        if P.coming_inf
+            if t_d%7 == 1
+                rnd = (P.prev_max-P.prev_min)*rand()+P.prev_min
+            end
+            inserting_infections(rnd)
+        end
+
+        if t_d == (P.day_second_dose+P.delay_immu) 
+            vaccination_dose_2()
+        end
 
         if P.testing_res
             if t_d >= P.start_test
@@ -221,9 +256,16 @@ function main(P::ModelParameters,sim_idx::Int64)
                # println(t)
                 contact_dynamics(residents,hcw,P,n_shift,t_in_day)
                 
-                (lat_res_ct[t], pre_res_ct[t], asymp_res_ct[t], mild_res_ct[t], hosp_res_ct[t], sev_res_ct[t], rec_res_ct[t], dead_res_ct[t]) = time_update(residents,rooms,P) #updating the residents
-                (lat_hcw_ct[t], pre_hcw_ct[t], asymp_hcw_ct[t], mild_hcw_ct[t], hosp_hcw_ct[t], sev_hcw_ct[t], rec_hcw_ct[t], dead_hcw_ct[t]) = time_update(hcw,rooms,P) ##updating the hcw
-                (lat_iso, pre_iso, asymp_iso, mild_iso, hosp_iso, sev_iso, rec_iso, dead_iso) = time_update(hcw_sub,rooms,P) ##updating the hcw
+                (lat_res_ct[t], pre_res_ct[t], asymp_res_ct[t], mild_res_ct[t], hosp_res_ct[t], sev_res_ct[t], rec_res_ct[t], dead_res_ct[t],aux1,aux2,aux3) = time_update(residents,rooms,P) #updating the residents
+                (lat_hcw_ct[t], pre_hcw_ct[t], asymp_hcw_ct[t], mild_hcw_ct[t], hosp_hcw_ct[t], sev_hcw_ct[t], rec_hcw_ct[t], dead_hcw_ct[t],aux1,aux2,aux3) = time_update(hcw,rooms,P) ##updating the hcw
+                total_lat += aux1
+                total_pre += aux2
+                total_asymp += aux3
+                (lat_iso, pre_iso, asymp_iso, mild_iso, hosp_iso, sev_iso, rec_iso, dead_iso,aux1,aux2,aux3) = time_update(hcw_sub,rooms,P) ##updating the hcw
+                total_lat += aux1
+                total_pre += aux2
+                total_asymp += aux3
+                
                 lat_hcw_ct[t] += lat_iso
                 pre_hcw_ct[t] += pre_iso
                 asymp_hcw_ct[t] += asymp_iso
@@ -241,9 +283,16 @@ function main(P::ModelParameters,sim_idx::Int64)
             ## each 8 hours, we force one contact of residents with their roommates
             forcing_contact_res(residents,P)
 
-            (lat_res_ct[t], pre_res_ct[t], asymp_res_ct[t], mild_res_ct[t], hosp_res_ct[t], sev_res_ct[t], rec_res_ct[t], dead_res_ct[t]) = time_update(residents,rooms,P) #updating the residents
-            (lat_hcw_ct[t], pre_hcw_ct[t], asymp_hcw_ct[t], mild_hcw_ct[t], hosp_hcw_ct[t], sev_hcw_ct[t], rec_hcw_ct[t], dead_hcw_ct[t]) = time_update(hcw,rooms,P) ##updating the hcw
-            (lat_iso, pre_iso, asymp_iso, mild_iso, hosp_iso, sev_iso, rec_iso, dead_iso) = time_update(hcw_sub,rooms,P) ##updating the hcw
+            (lat_res_ct[t], pre_res_ct[t], asymp_res_ct[t], mild_res_ct[t], hosp_res_ct[t], sev_res_ct[t], rec_res_ct[t], dead_res_ct[t],aux1,aux2,aux3) = time_update(residents,rooms,P) #updating the residents
+            (lat_hcw_ct[t], pre_hcw_ct[t], asymp_hcw_ct[t], mild_hcw_ct[t], hosp_hcw_ct[t], sev_hcw_ct[t], rec_hcw_ct[t], dead_hcw_ct[t],aux1,aux2,aux3) = time_update(hcw,rooms,P) ##updating the hcw
+            total_lat += aux1
+            total_pre += aux2
+            total_asymp += aux3
+            (lat_iso, pre_iso, asymp_iso, mild_iso, hosp_iso, sev_iso, rec_iso, dead_iso,aux1,aux2,aux3) = time_update(hcw_sub,rooms,P) ##updating the hcw
+            total_lat += aux1
+            total_pre += aux2
+            total_asymp += aux3
+            
             lat_hcw_ct[t] += lat_iso
             pre_hcw_ct[t] += pre_iso
             asymp_hcw_ct[t] += asymp_iso
@@ -263,6 +312,6 @@ function main(P::ModelParameters,sim_idx::Int64)
     R0+=length(findall(x->x.infected_by_type == hcw[first_inf[1]].staff_type,residents))
 
     #return (lat_res_ct,lat_hcw_ct,pre_res_ct,pre_hcw_ct,asymp_res_ct,asymp_hcw_ct,mild_res_ct,mild_hcw_ct,sev_res_ct,sev_hcw_ct,hosp_res_ct,hosp_hcw_ct,rec_res_ct,rec_hcw_ct,dead_res_ct,dead_hcw_ct,R0,iso_tested_lat,iso_tested_pre,iso_tested_asymp,iso_tested_lat_res,iso_tested_pre_res,iso_tested_asymp_res)
-    return (lat_res_ct,lat_hcw_ct,sum(pre_res_ct),sum(pre_hcw_ct),sum(asymp_res_ct),sum(asymp_hcw_ct),sum(sev_res_ct),sum(sev_hcw_ct),sum(hosp_res_ct),sum(hosp_hcw_ct),sum(dead_res_ct),sum(dead_hcw_ct),R0,iso_tested_lat,iso_tested_pre,iso_tested_asymp,iso_tested_lat_res,iso_tested_pre_res,iso_tested_asymp_res,sum(lat_res_ct),sum(lat_hcw_ct))
+    return (lat_res_ct,lat_hcw_ct,sum(pre_res_ct),sum(pre_hcw_ct),sum(asymp_res_ct),sum(asymp_hcw_ct),sum(sev_res_ct),sum(sev_hcw_ct),sum(hosp_res_ct),sum(hosp_hcw_ct),sum(dead_res_ct),sum(dead_hcw_ct),R0,iso_tested_lat,iso_tested_pre,iso_tested_asymp,total_lat,total_pre,total_asymp,sum(lat_res_ct),sum(lat_hcw_ct))
 
 end

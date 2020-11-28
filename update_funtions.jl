@@ -1,7 +1,7 @@
 
 function time_update(group,rooms,P)
     # counters to calculate incidence
-    lat=0; pre=0; asymp=0; mild=0; hosp=0; sev=0; rec=0; dead=0;
+    lat=0; pre=0; asymp=0; mild=0; hosp=0; sev=0; rec=0; dead=0;lat2=0;pre2=0;asymp2=0
     for x in group 
         x.tis += P.step 
         x.doi += P.step # increase day of infection. variable is garbage until person is latent
@@ -52,14 +52,14 @@ function time_update(group,rooms,P)
 
         if x.tis >= x.exp             
             @match Symbol(x.swap) begin
-                :LAT  => begin move_to_latent(x); lat += x.outside_inf ? 0 : 1; end
-                :PRE  => begin move_to_pre(x); pre += x.outside_inf ? 0 : 1; end
-                :ASYMP => begin move_to_asymp(x); asymp += x.outside_inf ? 0 : 1; end
-                :MILD => begin move_to_mild(x,rooms); mild += x.outside_inf ? 0 : 1; end
-                :SEV  => begin move_to_sev(x,rooms); sev += x.outside_inf ? 0 : 1; end  
-                :HOSP  => begin move_to_hosp(x,rooms); hosp += x.outside_inf ? 0 : 1; end    
-                :REC  => begin move_to_recovered(x); rec += x.outside_inf ? 0 : 1; end
-                :DEAD  => begin move_to_dead(x); dead += x.outside_inf ? 0 : 1; end
+                :LAT  => begin move_to_latent(x); lat += (x.outside_inf || x.sub) ? 0 : 1; lat2 += x.sub ? 0 : 1 end
+                :PRE  => begin move_to_pre(x); pre += (x.outside_inf || x.sub) ? 0 : 1; pre2 += x.sub ? 0 : 1; end
+                :ASYMP => begin move_to_asymp(x); asymp += (x.outside_inf || x.sub) ? 0 : 1; asymp2 += x.sub ? 0 : 1; end
+                :MILD => begin move_to_mild(x,rooms); mild += (x.outside_inf || x.sub) ? 0 : 1; end
+                :SEV  => begin move_to_sev(x,rooms); sev += (x.outside_inf || x.sub) ? 0 : 1; end  
+                :HOSP  => begin move_to_hosp(x,rooms); hosp += (x.outside_inf || x.sub) ? 0 : 1; end    
+                :REC  => begin move_to_recovered(x); rec += (x.outside_inf || x.sub) ? 0 : 1; end
+                :DEAD  => begin move_to_dead(x); dead += (x.outside_inf || x.sub) ? 0 : 1; end
                 _    => error("swap expired, but no swap set. $x")
             end
 
@@ -75,7 +75,7 @@ function time_update(group,rooms,P)
             end =#
         end
     end
-    return lat, pre, asymp, mild, hosp, sev, rec, dead
+    return lat, pre, asymp, mild, hosp, sev, rec, dead, lat2, pre2, asymp2
 end
 export time_update
 
@@ -126,14 +126,18 @@ function move_to_pre(x::Humans)
     x.tis = 0   # reset time in state 
     x.exp = x.dur[3] # get the presymptomatic period
 
-    if x.room_idx < 0
+    if x.room_idx < 0*(1-x.vac_ef)
         if rand() < θ[x.ag]
             x.swap = MILD
         else 
             x.swap = SEV
         end
     else
-        x.swap = SEV
+        if rand() < P.prop_sev_res*(1-x.vac_ef)
+            x.swap = SEV
+        else
+            x.swap = MILD
+        end
     end
     # calculate whether person is isolated
     #rand() < p.fpreiso && _set_isolation(x, true, :pi)
@@ -178,11 +182,11 @@ function move_to_sev(x::Humans,rooms::Array{Rooms,1})
     if x.room_idx > 0
         age_thres = [60;69;79;89;100]
         a = findfirst(y-> y >= x.age,age_thres)
-        ha = [0.182;0.151;0.134;0.093;0.071] #hospital admission probability
+        ha = [0.182;0.151;0.134;0.093;0.071]/P.prop_sev_res #hospital admission probability
         if rand() < ha[a]
             x.swap = HOSP
         else
-            mh = [0.084;0.188;0.241;0.279;0.354]
+            mh = [0.084;0.188;0.241;0.279;0.354]/P.prop_sev_res
             if rand() < mh[a]
                 x.exp = x.dur[4]  
                 x.swap = DEAD
@@ -257,8 +261,12 @@ function move_to_hosp(x::Humans,rooms::Array{Rooms,1})
     if x.room_idx > 0 #for residents
         age_thres = [60;69;79;89;100]
         a = findfirst(y-> y >= x.age,age_thres)
-        mh = [0.084;0.188;0.241;0.279;0.354]
-        x.exp = rand(truncated(Gamma(4.5, 2.75), 8, 17))
+        mh = [0.084;0.188;0.241;0.279;0.354]/P.prop_sev_res
+        if rand() < c#[x.ag] ##goes to ICU
+            x.exp = rand(truncated(Gamma(4.5, 2.75), 8, 17))+ 2
+        else
+            x.exp = rand(truncated(Gamma(4.5, 2.75), 8, 17))
+        end
         if rand() < mh[a]
             x.swap = DEAD
         else
@@ -325,6 +333,19 @@ function move_to_dead(x::Humans)
         rooms[x.room_idx].n_symp_res -= 1
         #x.iso = false
     end
+#=
+    if x.room_idx > 0
+
+        initializing_resident(x,x.idx,x.room_idx)
+        if P.vaccinating && rand() < P.vac_cov_res
+            red = (P.efficacy_red_max-P.efficacy_red_min)*rand()+P.efficacy_red_min
+            x.vac_ef = 0.9*(1-red)
+            x.vac_status = 2
+        else
+            x.vac_ef = 0.0
+            x.vac_status = 0
+        end
+    end=#
 
     #= if P.iso_strat == :none
         if x.room_idx < 0
