@@ -93,10 +93,10 @@ function move_to_latent(x::Humans)
     #symp_pcts = (0.75, 0.75, 0.86, 0.93, 0.93) 
     
     #0-18 31 19 - 59 29 60+ 18 going to asymp
-    symp_pcts = [0.7, 0.69, 0.71, 0.82, 0.87]
-    age_thres = [4, 19, 64, 79, 999]
+  ##### for ontario canada
+    symp_pcts = [0.7, 0.623, 0.672, 0.672, 0.812, 0.812] #[0.3 0.377 0.328 0.328 0.188 0.188]
+    age_thres = [4, 19, 49, 64, 79, 999]
     g = findfirst(y-> y >= x.age, age_thres)
-     
     x.swap = rand() < (symp_pcts[g])*(1-x.vac_ef_symp) ? PRE : ASYMP 
     #x.got_inf = true
     ## in calibration mode, latent people never become infectious.
@@ -203,8 +203,12 @@ function move_to_sev(x::Humans,rooms::Array{Rooms,1})
         end =#
         #set_new_room(x,rooms)
     else
-        mh = [0.01/5, 0.01/5, 0.0135/3, 0.01225/1.5, 0.04/2]
-        h = x.comorbidity == 1 ? 0.4 : 0.09
+        groups = [0:34,35:54,55:69,70:84,85:100]
+        gg = findfirst(y-> x.age in y,groups)
+
+        mh = [0.0002; 0.0015; 0.011; 0.0802; 0.381]
+        h = x.comorbidity == 1 ? 0.235 : 0.089
+       
         x.health = SEV
         x.swap = UNDEF
         x.tis = 0 
@@ -213,7 +217,7 @@ function move_to_sev(x::Humans,rooms::Array{Rooms,1})
             x.exp = 0.0#time_to_hospital    
             x.swap = HOSP#rand() < c ? ICU : HOS        
         else ## no hospital for this lucky (but severe) individual 
-            if rand() < mh[x.ag]
+            if rand() < mh[gg]
                 x.exp = x.dur[4]  
                 x.swap = DEAD
             else 
@@ -255,8 +259,7 @@ function move_to_hosp(x::Humans,rooms::Array{Rooms,1})
 
 
     x.wentTo = HOSP   
-    #h = x.comorbidity == 1 ? 0.4 : 0.09
-    c = x.comorbidity == 1 ? 0.33 : 0.25
+    c = x.comorbidity == 1 ? 0.261 : 0.197
 
     if x.room_idx > 0 #for residents
         age_thres = [60;69;79;89;100]
@@ -274,19 +277,21 @@ function move_to_hosp(x::Humans,rooms::Array{Rooms,1})
         end
         rooms[x.room_idx].n_symp_res -= 1
     else #for HCW
-        age_thres = [24;34;44;54;64;74;84;999]
-        g = findfirst(y-> y >= x.age,age_thres)
-        mh = [0.0005, 0.0022, 0.0057, 0.0160, 0.0401, 0.0696, 0.0893, 0.11]#non-icu service
-        mc = [0.0009,0.0045,0.0115,0.0319,0.0801,0.1392,0.1786,0.22]#icu service +- 2x non-icu
+        aux = [0:4, 5:19, 20:44, 45:54, 55:64, 65:74, 75:84, 85:99]
+   
+        mh = [0.001, 0.001, 0.0015, 0.0065, 0.01, 0.02, 0.0735, 0.38]
+        mc = [0.002,0.002,0.0022, 0.008, 0.022, 0.04, 0.08, 0.4]
+        #if person recovers
+        gg = findfirst(y-> x.age in y,aux)
         if rand() < c#[x.ag] ##goes to ICU
             x.exp = rand(truncated(Gamma(4.5, 2.75), 8, 17))+ 2
-            if rand() < mc[x.ag]
+            if rand() < mc[gg]
                 x.tis = x.exp  
                 x.swap = DEAD
             end
         else
             x.exp = rand(truncated(Gamma(4.5, 2.75), 8, 17))
-            if rand() < mh[x.ag]
+            if rand() < mh[gg]
                 x.tis = x.exp
                 x.swap = DEAD
             end

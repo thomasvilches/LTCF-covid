@@ -5,7 +5,7 @@ using Parameters, Distributions, StatsBase, StaticArrays, Random, Match, DataFra
     β = 0.7       
     prov::Symbol = :ontario 
     calibration::Bool = false 
-    modeltime::Int64 = 500
+    modeltime::Int64 = 200
     initialinf::Int64 = 1
     fsevere::Float64 = 0.0 # fixed at 0.80
     fasymp::Float64 = 0.50 ## NOT USED ANYMORE ## percent going to asymp (may 10, removed all tests and references)

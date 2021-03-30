@@ -1,7 +1,7 @@
 using Distributed
 using ClusterManagers
 #addprocs(4)
-addprocs(SlurmManager(500), N=17, topology=:master_worker, exeflags="--project=.")
+addprocs(SlurmManager(250), N=8, topology=:master_worker, exeflags="--project=.")
 
 @everywhere using DelimitedFiles
 @everywhere using Parameters, Distributions, StatsBase, StaticArrays, Random, Match, DataFrames
@@ -155,26 +155,26 @@ function run_all_scen(beta,tr1=[1;2])
     #@everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 0,vaccinating = $vac) #new0.25 old 0.197
     #runsim(4000,ip,"S1")
      
-    @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 2,vaccinating = false,modeltime=500) #new0.25 old 0.197
+    @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 2,vaccinating = false,modeltime=200) #new0.25 old 0.197
     runsim(4000,ip,"S1") 
     
     for tr in tr1
-        @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 7,time_to_result = $tr,vaccinating = false,modeltime=500) #new0.25 old 0.197
+        @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 7,time_to_result = $tr,vaccinating = false,modeltime=200) #new0.25 old 0.197
         runsim(4000,ip,"S2a-$(ip.time_to_result)")
         
-        @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 7,time_to_result = $tr,vaccinating = false,modeltime=500) #new0.25 old 0.197
+        @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 7,time_to_result = $tr,vaccinating = false,modeltime=200) #new0.25 old 0.197
         runsim(4000,ip,"S2b-$(ip.time_to_result)")
         
-        @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 7,time_to_result = $tr,vaccinating = true,modeltime=500) #new0.25 old 0.197
+        @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:np,test_interval = 7,time_to_result = $tr,vaccinating = true,modeltime=200) #new0.25 old 0.197
         runsim(4000,ip,"S4a-$(ip.time_to_result)")
         
-        @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 7,time_to_result = $tr,vaccinating = true,modeltime=500) #new0.25 old 0.197
+        @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = true,testing_res=false,fixed_res = 2,test=:saliva,test_interval = 7,time_to_result = $tr,vaccinating = true,modeltime=200) #new0.25 old 0.197
         runsim(4000,ip,"S4b-$(ip.time_to_result)")
 
     end
 
 
-    @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 2,vaccinating = true,modeltime=500) #new0.25 old 0.197
+    @everywhere ip = ModelParameters(β = $beta, type_h = :new, iso_strat = :total,testing_hcw = false,testing_res=false,fixed_res = 2,vaccinating = true,modeltime=200) #new0.25 old 0.197
     runsim(4000,ip,"S3")
 
 end 

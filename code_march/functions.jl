@@ -250,6 +250,7 @@ function daily_contacts_res(res::Array{Humans,1})
             x.contacts_res[i] = 0
             x.contacts_psw[i] = 0
             x.contacts_nurse[i] = 0
+            x.contacts_diet[i] = 0
             x.contacts_hk[i] = 0
         end
         n1 = Int(round(rand(dist_rr)/(0.36)))
@@ -261,6 +262,7 @@ function daily_contacts_res(res::Array{Humans,1})
 
         ###residents will have one andom contact with dietary staff in each shift
         h = rand(1:8)
+        
         x.contacts_diet[h] += 1
 
         h = rand(9:16)
@@ -303,6 +305,7 @@ function daily_contacts_hcw(n_shift::Int64)
             x.contacts_res[i] = 0
             x.contacts_psw[i] = 0
             x.contacts_nurse[i] = 0
+            x.contacts_diet[i] = 0
             x.contacts_hk[i] = 0
         end
         for i = 1:length(x.res_care)
@@ -600,6 +603,7 @@ function contact_dynamics(res::Array{Humans,1},hcw::Array{Humans,1},P::ModelPara
                     perform_contact(y,x,ih,P.asymp_red_idx,0.0,P.normal_mask)
                 end
             end
+
             for j = 1:x.contacts_hk[t]
                 r = rand(pos_hk)
                 y = hcw[r]
@@ -1118,7 +1122,6 @@ end
 function inserting_infections(rnd::Float64)
 
     pos = findall(k->k.health == SUS,hcw)
-
     for i in pos
         x = hcw[i]
         if rand() < rnd
@@ -1126,7 +1129,6 @@ function inserting_infections(rnd::Float64)
             x.outside_inf = true
         end
     end
-
 end
 
 function vaccination_dose_1()
@@ -1152,9 +1154,9 @@ function vaccination_dose_1()
         x = residents[i]
         
         
-        x.vac_ef_inf = ((1-x.red)^x.comorbidity)*P.vac_efficacy_inf[1][1]
-        x.vac_ef_symp = ((1-x.red)^x.comorbidity)*P.vac_efficacy_symp[1][1]
-        x.vac_ef_sev = ((1-x.red)^x.comorbidity)*P.vac_efficacy_sev[1][1]
+        x.vac_ef_inf = (1-x.red)*P.vac_efficacy_inf[1][1]
+        x.vac_ef_symp = (1-x.red)*P.vac_efficacy_symp[1][1]
+        x.vac_ef_sev = (1-x.red)*P.vac_efficacy_sev[1][1]
         x.vac_status = 1
     end
 
@@ -1177,9 +1179,9 @@ function vaccination_dose_2()
 
     for i in pos
         x = residents[i]
-        x.vac_ef_inf = ((1-x.red)^x.comorbidity)*(P.vac_efficacy_inf[2][1]-P.vac_efficacy_inf[1][1])+x.vac_ef_inf
-        x.vac_ef_symp = ((1-x.red)^x.comorbidity)*(P.vac_efficacy_symp[2][1]-P.vac_efficacy_symp[1][1])+x.vac_ef_symp
-        x.vac_ef_sev = ((1-x.red)^x.comorbidity)*(P.vac_efficacy_sev[2][1]-P.vac_efficacy_sev[1][1])+x.vac_ef_sev
+        x.vac_ef_inf = (1-x.red)*(P.vac_efficacy_inf[2][1]-P.vac_efficacy_inf[1][1])+x.vac_ef_inf
+        x.vac_ef_symp = (1-x.red)*(P.vac_efficacy_symp[2][1]-P.vac_efficacy_symp[1][1])+x.vac_ef_symp
+        x.vac_ef_sev = (1-x.red)*(P.vac_efficacy_sev[2][1]-P.vac_efficacy_sev[1][1])+x.vac_ef_sev
         x.vac_status = 2
     end
 
@@ -1202,9 +1204,9 @@ function vaccination_dose_2_2()
 
     for i in pos
         x = residents[i]
-        x.vac_ef_inf = ((1-x.red)^x.comorbidity)*(P.vac_efficacy_inf[2][2]-P.vac_efficacy_inf[2][1])+x.vac_ef_inf
-        x.vac_ef_symp = ((1-x.red)^x.comorbidity)*(P.vac_efficacy_symp[2][2]-P.vac_efficacy_symp[2][1])+x.vac_ef_symp
-        x.vac_ef_sev = ((1-x.red)^x.comorbidity)*(P.vac_efficacy_sev[2][2]-P.vac_efficacy_sev[2][1])+x.vac_ef_sev
+        x.vac_ef_inf = (1-x.red)*(P.vac_efficacy_inf[2][2]-P.vac_efficacy_inf[2][1])+x.vac_ef_inf
+        x.vac_ef_symp = (1-x.red)*(P.vac_efficacy_symp[2][2]-P.vac_efficacy_symp[2][1])+x.vac_ef_symp
+        x.vac_ef_sev = (1-x.red)*(P.vac_efficacy_sev[2][2]-P.vac_efficacy_sev[2][1])+x.vac_ef_sev
         x.vac_status = 2
     end
 
